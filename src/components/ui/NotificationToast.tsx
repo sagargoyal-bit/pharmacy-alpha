@@ -57,7 +57,7 @@ export function NotificationToast() {
                                     </svg>
                                 )}
                             </div>
-                            <div className="ml-3 w-0 flex-1">
+                            <div className="ml-3 flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900">{notification.title}</p>
                                 <p className="mt-1 text-sm text-gray-500">{notification.message}</p>
                             </div>

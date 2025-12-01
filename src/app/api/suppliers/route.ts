@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
             .eq('pharmacy_id', pharmacy.id)
             .eq('is_active', true)
 
-        // Add search filter
+        // Add search filter (case insensitive)
         if (search) {
-            query = query.or(`name.ilike.%${search}%,contact_person.ilike.%${search}%,city.ilike.%${search}%`)
+            const searchTerm = search.trim().toLowerCase()
+            query = query.or(`name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
         }
 
         const { data: suppliers, error } = await query

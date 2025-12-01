@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import AutocompleteDropdown from '@/components/ui/AutocompleteDropdown'
 import { useAppDispatch, useAppSelector } from '@/lib/store'
 import { useCreatePurchaseMutation, useGetPurchasesQuery, useGetPurchasesStatsQuery } from '@/lib/store/api/pharmacyApi'
 import { addNotification, openModal, closeModal } from '@/lib/store/slices/uiSlice'
@@ -197,7 +198,7 @@ export default function PurchaseEntry() {
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Medicine Name</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Supplier</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Quantity</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Rate</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">S.Rate</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">MRP</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Purchase Date</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Total</th>
@@ -274,24 +275,26 @@ export default function PurchaseEntry() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Supplier Name *</label>
-                                    <input
-                                        type="text"
-                                        required
+                                    <AutocompleteDropdown
+                                        fieldType="supplier_name"
                                         value={formData.supplier_name}
-                                        onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                                        className="w-full text-black px-3 py-2 border color-black border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onChange={(value) => setFormData({ ...formData, supplier_name: value })}
                                         placeholder="Enter supplier name"
+                                        required
+                                        className="text-black"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Invoice Number 
+                                        <span className="text-xs text-gray-500 ml-1">(optional - auto-generated if empty)</span>
+                                    </label>
                                     <input
                                         type="text"
-                                        required
                                         value={formData.invoice_number}
                                         onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                                        className="w-full  text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter invoice number"
+                                        className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Leave empty for auto-generation"
                                     />
                                 </div>
                                 <div>
@@ -320,7 +323,7 @@ export default function PurchaseEntry() {
                                 </div>
 
                                 {/* Items Table */}
-                                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <div className="overflow-x-auto overflow-y-visible border border-gray-200 rounded-lg">
                                     <table className="min-w-full">
                                         <thead className="bg-gray-50">
                                             <tr>
@@ -330,7 +333,7 @@ export default function PurchaseEntry() {
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expiry</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">MRP</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rate</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">S.Rate</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                                             </tr>
@@ -339,13 +342,15 @@ export default function PurchaseEntry() {
                                             {formData.items.map((item, index) => (
                                                 <tr key={index}>
                                                     <td className="px-3 py-2">
-                                                        <input
-                                                            type="text"
-                                                            required
+                                                        <AutocompleteDropdown
+                                                            fieldType="medicine_name"
                                                             value={item.item_name}
-                                                            onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            onChange={(value) => handleItemChange(index, 'item_name', value)}
                                                             placeholder="Medicine name"
+                                                            required
+                                                            className="text-black px-2 py-1 text-sm"
+                                                            inTable={true}
+                                                            dropdownDirection="auto"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">

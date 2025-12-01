@@ -11,6 +11,8 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",
     "@supabase/supabase-js": "^2.52.1",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "next": "15.4.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",

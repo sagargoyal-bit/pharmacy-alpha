@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchPurchasesQuery, useUpdatePurchaseItemMutation, useDeletePurchaseItemMutation, useGetPurchasesStatsQuery, useGetSuppliersQuery, useUpdateSupplierMutation, type PurchaseSearchResult } from '@/lib/store/api/pharmacyApi'
+import AutocompleteDropdown from '@/components/ui/AutocompleteDropdown'
 
 export default function InventoryManagement() {
     const [filters, setFilters] = useState({
@@ -415,33 +416,30 @@ export default function InventoryManagement() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Search Filters</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Medicine Name</label>
-                        <input
-                            type="text"
+                        <AutocompleteDropdown
+                            fieldType="medicine_name"
                             value={filters.medicine_name}
-                            onChange={(e) => handleFilterChange('medicine_name', e.target.value)}
+                            onChange={(value) => handleFilterChange('medicine_name', value)}
                             placeholder="Search by medicine name..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                            label="Medicine Name"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Supplier Name</label>
-                        <input
-                            type="text"
+                        <AutocompleteDropdown
+                            fieldType="supplier_name"
                             value={filters.supplier_name}
-                            onChange={(e) => handleFilterChange('supplier_name', e.target.value)}
+                            onChange={(value) => handleFilterChange('supplier_name', value)}
                             placeholder="Search by supplier name..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                            label="Supplier Name"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Batch Number</label>
-                        <input
-                            type="text"
+                        <AutocompleteDropdown
+                            fieldType="batch_number"
                             value={filters.batch_number}
-                            onChange={(e) => handleFilterChange('batch_number', e.target.value)}
+                            onChange={(value) => handleFilterChange('batch_number', value)}
                             placeholder="Search by batch number..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                            label="Batch Number"
                         />
                     </div>
                     <div>

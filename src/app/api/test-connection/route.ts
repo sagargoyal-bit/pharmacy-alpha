@@ -3,104 +3,121 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET() {
     try {
-        console.log('🔍 Testing Supabase Connection...')
-
-        // Test 1: Check environment variables
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-        console.log('Environment Variables:')
-        console.log('- SUPABASE_URL:', url ? '✅ Set' : '❌ Missing')
-        console.log('- SUPABASE_KEY:', key ? '✅ Set' : '❌ Missing')
-
-        // Test 2: Basic connection test
+        console.log('Testing database connection...')
+        
+        // Test basic connection
         const { data: connectionTest, error: connectionError } = await supabase
-            .from('information_schema.tables')
-            .select('table_name')
+            .from('pharmacies')
+            .select('count')
             .limit(1)
 
-        console.log('Basic Connection Test:', connectionTest)
         if (connectionError) {
-            console.log('❌ Connection failed:', connectionError.message)
-        } else {
-            console.log('✅ Connection successful')
+            console.error('Connection error:', connectionError)
+            return NextResponse.json({
+                status: 'error',
+                message: 'Database connection failed',
+                error: connectionError.message,
+                details: connectionError
+            }, { status: 500 })
         }
 
-        // Test 3: Check auth.users (requires service role key)
-        console.log('Checking auth.users...')
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+        // Test table existence and data
+        const tables = ['pharmacies', 'medicines', 'current_inventory', 'purchases', 'stock_transactions']
+        const tableStatus: Record<string, { exists: boolean; error?: string; count?: number }> = {}
 
-        console.log('Auth Users:')
-        if (authError) {
-            console.log('❌ Auth users query failed:', authError.message)
-            console.log('   This is normal if you are using anon key (need service role key for auth.users)')
-        } else {
-            console.log(`✅ Found ${authUsers.users?.length || 0} auth users`)
-            authUsers.users?.forEach((user, index) => {
-                console.log(`   ${index + 1}. ${user.email} (ID: ${user.id})`)
-            })
-        }
+        for (const table of tables) {
+            try {
+                const { data, error, count } = await supabase
+                    .from(table)
+                    .select('*', { count: 'exact', head: true })
 
-        // Test 4: Check public.users table
-        console.log('Checking public.users table...')
-        const { data: publicUsers, error: publicError } = await supabase
-            .from('users')
-            .select('*')
-
-        console.log('Public Users:')
-        if (publicError) {
-            console.log('❌ Public users query failed:', publicError.message)
-            if (publicError.code === '42P01') {
-                console.log('   The "users" table does not exist. You need to run the database schema first.')
-            }
-        } else {
-            console.log(`✅ Found ${publicUsers?.length || 0} public users`)
-            publicUsers?.forEach((user, index) => {
-                console.log(`   ${index + 1}. ${user.email} (ID: ${user.id})`)
-            })
-        }
-
-        // Test 5: Check other tables
-        const tables = ['pharmacies', 'suppliers', 'medicines', 'medicine_categories']
-
-        for (const tableName of tables) {
-            const { data, error } = await supabase
-                .from(tableName)
-                .select('*', { count: 'exact' })
-                .limit(0)
-
-            if (error) {
-                console.log(`❌ Table "${tableName}": ${error.message}`)
-            } else {
-                console.log(`✅ Table "${tableName}": ${data?.length || 0} records`)
+                if (error) {
+                    tableStatus[table] = { exists: false, error: error.message }
+                } else {
+                    tableStatus[table] = { exists: true, count: count || 0 }
+                }
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+                tableStatus[table] = { exists: false, error: errorMessage }
             }
         }
 
-        // Return summary
+        // Test sample queries for dashboard
+        const dashboardTests: Record<string, any> = {}
+
+        // Test pharmacy existence
+        try {
+            const { data: pharmacies, error: pharmacyError } = await supabase
+                .from('pharmacies')
+                .select('id, name')
+                .limit(1)
+
+            dashboardTests.pharmacy = {
+                success: !pharmacyError,
+                data: pharmacies,
+                error: pharmacyError?.message
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            dashboardTests.pharmacy = { success: false, error: errorMessage }
+        }
+
+        // Test medicines count
+        try {
+            const { data: medicines, error: medicineError } = await supabase
+                .from('current_inventory')
+                .select('medicine_id', { count: 'exact' })
+                .gt('current_stock', 0)
+                .limit(1)
+
+            dashboardTests.medicines = {
+                success: !medicineError,
+                count: medicines?.length || 0,
+                error: medicineError?.message
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            dashboardTests.medicines = { success: false, error: errorMessage }
+        }
+
+        // Test today's purchases
+        try {
+            const today = new Date().toISOString().split('T')[0]
+            const { data: purchases, error: purchaseError } = await supabase
+                .from('purchases')
+                .select('total_amount')
+                .eq('purchase_date', today)
+
+            dashboardTests.purchases = {
+                success: !purchaseError,
+                count: purchases?.length || 0,
+                total: purchases?.reduce((sum: number, p: any) => sum + (p.total_amount || 0), 0) || 0,
+                error: purchaseError?.message
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            dashboardTests.purchases = { success: false, error: errorMessage }
+        }
+
         return NextResponse.json({
-            status: 'Connection test completed',
+            status: 'success',
+            message: 'Database connection successful',
+            timestamp: new Date().toISOString(),
+            tableStatus,
+            dashboardTests,
             environment: {
-                url: url ? 'Set' : 'Missing',
-                key: key ? 'Set' : 'Missing'
-            },
-            connection: connectionError ? 'Failed' : 'Success',
-            authUsers: authError ? 'Failed to query' : (authUsers?.users?.length || 0),
-            publicUsers: publicError ? 'Failed to query' : (publicUsers?.length || 0),
-            tables: {
-                pharmacies: 'Check console for details',
-                suppliers: 'Check console for details',
-                medicines: 'Check console for details',
-                medicine_categories: 'Check console for details'
-            },
-            message: 'Check server console for detailed logs'
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not Set',
+                supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not Set'
+            }
         })
 
     } catch (error) {
-        console.error('❌ Test failed with exception:', error)
+        console.error('Test connection error:', error)
         return NextResponse.json({
-            status: 'Test failed',
-            error: error instanceof Error ? error.message : 'Unknown error',
-            message: 'Check server console for detailed logs'
+            status: 'error',
+            message: 'Unexpected error during connection test',
+            error: error.message,
+            stack: error.stack
         }, { status: 500 })
     }
 } 

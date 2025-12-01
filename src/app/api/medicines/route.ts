@@ -21,9 +21,10 @@ export async function GET(request: NextRequest) {
       `)
             .eq('is_active', true)
 
-        // Add search filter
+        // Add search filter (case insensitive)
         if (search) {
-            query = query.or(`name.ilike.%${search}%,generic_name.ilike.%${search}%,manufacturer.ilike.%${search}%`)
+            const searchTerm = search.trim().toLowerCase()
+            query = query.or(`name.ilike.%${searchTerm}%,generic_name.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%`)
         }
 
         // Add category filter
