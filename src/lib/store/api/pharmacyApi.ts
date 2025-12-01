@@ -299,9 +299,17 @@ export const pharmacyApi = createApi({
         // Dashboard stats
         getDashboardStats: builder.query<{
             total_medicines: number
+            total_medicines_change: number
+            total_medicines_trend: 'up' | 'down' | 'neutral'
             todays_purchases: number
+            todays_purchases_change: number
+            todays_purchases_trend: 'up' | 'down' | 'neutral'
             expiring_soon: number
+            expiring_soon_change: number
+            expiring_soon_trend: 'up' | 'down' | 'neutral'
             stock_value: number
+            stock_value_change: number
+            stock_value_trend: 'up' | 'down' | 'neutral'
             recent_activity: {
                 id: string
                 action: string

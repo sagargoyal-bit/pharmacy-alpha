@@ -423,9 +423,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
 
         // Validate the request body
-        if (!body.supplier_name || !body.invoice_number || !body.items?.length) {
+        if (!body.supplier_name || !body.items?.length) {
             return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: 'Missing required fields: supplier_name and items are required' },
                 { status: 400 }
             )
         }
@@ -512,6 +512,27 @@ export async function POST(request: NextRequest) {
             status: 'received'
         })
 
+        // Generate unique invoice number if needed
+        let invoiceNumber = body.invoice_number || `INV-${Date.now()}`
+        
+        // Check if invoice number already exists for this pharmacy and supplier
+        const { data: existingPurchase } = await supabase
+            .from('purchases')
+            .select('id')
+            .eq('pharmacy_id', pharmacies[0].id)
+            .eq('supplier_id', supplierId)
+            .eq('invoice_number', invoiceNumber)
+            .single()
+        
+        // If invoice number exists, generate a unique one
+        if (existingPurchase) {
+            const timestamp = Date.now()
+            const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+            invoiceNumber = body.invoice_number ? 
+                `${body.invoice_number}-${timestamp}` : 
+                `INV-${timestamp}-${randomSuffix}`
+        }
+
         // Create purchase record
         const { data: purchase, error: purchaseError } = await supabase
             .from('purchases')
@@ -519,7 +540,7 @@ export async function POST(request: NextRequest) {
                 pharmacy_id: pharmacies[0].id,
                 supplier_id: supplierId,
                 user_id: users[0].id,
-                invoice_number: body.invoice_number,
+                invoice_number: invoiceNumber,
                 invoice_date: purchaseDate,
                 purchase_date: purchaseDate,
                 total_amount: totalAmount,
