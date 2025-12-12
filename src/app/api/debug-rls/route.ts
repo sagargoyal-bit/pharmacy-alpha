@@ -84,7 +84,7 @@ ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pharmacies DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medicines DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.medicine_categories DISABLE ROW LEVEL SECURITY;
+-- medicine_categories table removed
 
 -- After testing, you can re-enable with proper policies:
 -- ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;`

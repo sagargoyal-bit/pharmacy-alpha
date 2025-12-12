@@ -5,20 +5,14 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url)
         const search = searchParams.get('search')
-        const category = searchParams.get('category')
+        // Category filtering removed - medicine_categories table no longer exists
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
         let query = supabase
             .from('medicines')
-            .select(`
-        *,
-        medicine_categories(
-          id,
-          name
-        )
-      `)
+            .select('*')
             .eq('is_active', true)
 
         // Add search filter (case insensitive)
@@ -27,10 +21,7 @@ export async function GET(request: NextRequest) {
             query = query.or(`name.ilike.%${searchTerm}%,generic_name.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%`)
         }
 
-        // Add category filter
-        if (category) {
-            query = query.eq('category_id', category)
-        }
+        // Category filtering removed - medicine_categories table no longer exists
 
         const { data: medicines, error } = await query
             .order('name', { ascending: true })
@@ -74,7 +65,7 @@ export async function POST(request: NextRequest) {
                 generic_name: body.generic_name || body.name,
                 brand_name: body.brand_name,
                 manufacturer: body.manufacturer,
-                category_id: body.category_id,
+                // category_id removed - medicine_categories table no longer exists
                 composition: body.composition,
                 strength: body.strength,
                 dosage_form: body.dosage_form,
@@ -85,13 +76,7 @@ export async function POST(request: NextRequest) {
                 storage_conditions: body.storage_conditions,
                 is_active: true
             })
-            .select(`
-        *,
-        medicine_categories(
-          id,
-          name
-        )
-      `)
+            .select('*')
             .single()
 
         if (error) {

@@ -23,6 +23,7 @@ export default function PurchaseEntry() {
             item_name: '',
             pack: '',
             qty: '',
+            weight: '',
             expiry: '',
             batch: '',
             mrp: '',
@@ -38,6 +39,7 @@ export default function PurchaseEntry() {
                 item_name: '',
                 pack: '',
                 qty: '',
+                weight: '',
                 expiry: '',
                 batch: '',
                 mrp: '',
@@ -79,6 +81,7 @@ export default function PurchaseEntry() {
                     medicine_name: item.item_name,
                     pack: item.pack || undefined,
                     quantity: parseInt(item.qty),
+                    weight: item.weight ? parseFloat(item.weight) : undefined,
                     expiry_date: item.expiry,
                     batch_number: item.batch || undefined,
                     mrp: item.mrp ? parseFloat(item.mrp) : undefined,
@@ -108,6 +111,7 @@ export default function PurchaseEntry() {
                     item_name: '',
                     pack: '',
                     qty: '',
+                    weight: '',
                     expiry: '',
                     batch: '',
                     mrp: '',
@@ -198,6 +202,7 @@ export default function PurchaseEntry() {
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Medicine Name</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Supplier</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Quantity</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Weight</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">S.Rate</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">MRP</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Purchase Date</th>
@@ -212,6 +217,7 @@ export default function PurchaseEntry() {
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-32 rounded"></div></td>
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div></td>
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
+                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
                                         <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-20 rounded"></div></td>
@@ -232,6 +238,9 @@ export default function PurchaseEntry() {
                                         </td>
                                         <td className="px-4 py-2 text-sm text-gray-900">{purchase.supplier}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">{purchase.quantity}</td>
+                                        <td className="px-4 py-2 text-sm text-gray-900">
+                                            {purchase.weight ? `${purchase.weight} ml` : '-'}
+                                        </td>
                                         <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.rate.toFixed(2)}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.mrp.toFixed(2)}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">
@@ -242,7 +251,7 @@ export default function PurchaseEntry() {
                                 ))
                             ) : (
                                 <tr className="border-t border-gray-200">
-                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                                         No recent purchases found
                                     </td>
                                 </tr>
@@ -330,6 +339,7 @@ export default function PurchaseEntry() {
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pack</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Weight</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expiry</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">MRP</th>
@@ -370,6 +380,16 @@ export default function PurchaseEntry() {
                                                             onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0"
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.weight}
+                                                            onChange={(e) => handleItemChange(index, 'weight', e.target.value)}
+                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            placeholder="0.00"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">

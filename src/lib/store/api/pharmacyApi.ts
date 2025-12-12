@@ -45,6 +45,7 @@ export interface PurchaseSearchResult {
     supplier_name: string
     batch_number: string
     quantity: number
+    weight?: number
     purchase_rate: number
     mrp: number
     expiry_date: string | null

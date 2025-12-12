@@ -13,15 +13,15 @@ export async function GET() {
             .from('pharmacies')
             .select('id, name, owner_id')
 
-        // Test 3: Count medicine categories
-        const { data: categories, error: catError } = await supabase
-            .from('medicine_categories')
+        // Test 3: Count suppliers (medicine_categories table removed)
+        const { data: suppliers, error: suppError } = await supabase
+            .from('suppliers')
             .select('id, name')
 
         console.log('Quick Test Results:')
         console.log(`- Users: ${users?.length || 0}`)
         console.log(`- Pharmacies: ${pharmacies?.length || 0}`)
-        console.log(`- Categories: ${categories?.length || 0}`)
+        console.log(`- Suppliers: ${suppliers?.length || 0}`)
 
         if (users?.length) {
             console.log('Users found:')
@@ -33,7 +33,7 @@ export async function GET() {
             data: {
                 users: users?.length || 0,
                 pharmacies: pharmacies?.length || 0,
-                categories: categories?.length || 0,
+                suppliers: suppliers?.length || 0,
                 userList: users || [],
                 pharmacyList: pharmacies || []
             },

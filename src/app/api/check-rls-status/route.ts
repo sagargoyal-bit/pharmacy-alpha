@@ -20,11 +20,11 @@ export async function GET() {
             .select('relname, relrowsecurity')
             .in('relname', ['users', 'pharmacies', 'purchases', 'suppliers'])
 
-        // Test INSERT permissions with anon key
+        // Test INSERT permissions with anon key (using suppliers table instead of removed medicine_categories)
         console.log('Testing INSERT with anon key...')
         const testResult = await supabase
-            .from('medicine_categories')
-            .insert({ name: 'TEST_CATEGORY_' + Date.now(), description: 'Test' })
+            .from('suppliers')
+            .insert({ name: 'TEST_SUPPLIER_' + Date.now(), pharmacy_id: '00000000-0000-0000-0000-000000000000' })
             .select()
 
         const insertWorks = !testResult.error
@@ -43,7 +43,7 @@ export async function GET() {
         // Clean up test data
         if (insertWorks && testResult.data) {
             await supabase
-                .from('medicine_categories')
+                .from('suppliers')
                 .delete()
                 .eq('id', testResult.data[0].id)
         }
@@ -65,10 +65,10 @@ ALTER TABLE public.suppliers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchase_items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medicines DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.medicine_categories DISABLE ROW LEVEL SECURITY;
+-- medicine_categories table removed
 ALTER TABLE public.current_inventory DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stock_transactions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.expiry_alerts DISABLE ROW LEVEL SECURITY;
+-- expiry_alerts table removed
 ALTER TABLE public.pharmacy_settings DISABLE ROW LEVEL SECURITY;`
                 },
                 solution2: {

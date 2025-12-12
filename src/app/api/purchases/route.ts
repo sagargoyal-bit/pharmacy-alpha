@@ -52,17 +52,7 @@ async function checkMedicineReferences(supabaseClient: any, medicine_id: string)
             return true // Still referenced in stock_transactions
         }
 
-        // Check expiry_alerts table (may not exist)
-        const { data: alertItems, error: alertError } = await supabaseClient
-            .from('expiry_alerts')
-            .select('id')
-            .eq('medicine_id', medicine_id)
-            .limit(1)
-
-        // Don't treat expiry_alerts errors as critical since table may not exist
-        if (!alertError && alertItems && alertItems.length > 0) {
-            return true // Still referenced in expiry_alerts
-        }
+        // expiry_alerts table removed - no longer needed for reference checking
 
         // No references found - safe to delete
         return false
@@ -105,15 +95,7 @@ async function cascadeDeleteFromRelatedTables(
             console.error('Stock transactions cascade delete error:', transactionDeleteError)
         }
 
-        // Delete from expiry_alerts table if it exists
-        const { error: alertDeleteError } = await supabaseClient
-            .from('expiry_alerts')
-            .delete()
-            .eq('medicine_id', medicine_id)
-            .eq('batch_number', batch_number)
-            .eq('expiry_date', expiry_date)
-
-        // Don't log expiry_alerts errors as this table may not exist
+        // expiry_alerts table removed - cascade delete no longer needed
 
         // Check if this medicine is still referenced anywhere else
         const isStillReferenced = await checkMedicineReferences(supabaseClient, medicine_id)
@@ -227,21 +209,7 @@ async function cascadeUpdatesToRelatedTables(
             }
         }
 
-        // 3. Update expiry_alerts table if it exists
-        if (updateFields.batch_number || updateFields.expiry_date) {
-            const alertUpdateFields: any = {}
-            if (updateFields.batch_number) alertUpdateFields.batch_number = newBatchNumber
-            if (updateFields.expiry_date) alertUpdateFields.expiry_date = newExpiryDate
-
-            const { error: alertError } = await supabaseClient
-                .from('expiry_alerts')
-                .update(alertUpdateFields)
-                .eq('medicine_id', medicine_id)
-                .eq('batch_number', oldBatchNumber)
-                .eq('expiry_date', oldExpiryDate)
-
-            // Don't log expiry_alerts errors as this table may not exist
-        }
+        // 3. expiry_alerts table removed - updates no longer needed
 
         // 4. Recalculate and update parent purchase total_amount if financial fields changed
         if (updateFields.quantity || updateFields.purchase_rate || updateFields.mrp) {
@@ -314,6 +282,7 @@ export async function GET(request: NextRequest) {
           batch_number,
           expiry_date,
           quantity,
+          weight,
           free_quantity,
           total_quantity,
           mrp,
@@ -391,6 +360,7 @@ export async function GET(request: NextRequest) {
                 supplier_name: purchase.suppliers?.name || 'Unknown',
                 batch_number: item.batch_number || '',
                 quantity: item.quantity || 0,
+                weight: item.weight || null,
                 purchase_rate: item.purchase_rate || 0,
                 mrp: item.mrp || 0,
                 expiry_date: item.expiry_date,
@@ -625,6 +595,7 @@ export async function POST(request: NextRequest) {
                 batch_number: item.batch_number || 'AUTO-' + Date.now(),
                 expiry_date: formattedExpiryDate,
                 quantity: parseInt(item.quantity) || 0,
+                weight: item.weight ? parseFloat(item.weight) : null,
                 free_quantity: 0,
                 mrp: parseFloat(item.mrp) || 0,
                 purchase_rate: parseFloat(item.rate) || 0,
@@ -737,6 +708,7 @@ export async function PUT(request: NextRequest) {
         // STEP 3: Prepare purchase_items update fields with financial calculations
         const updateFields: any = {}
         if (updateData.quantity) updateFields.quantity = parseInt(updateData.quantity)
+        if (updateData.weight !== undefined) updateFields.weight = updateData.weight ? parseFloat(updateData.weight) : null
         if (updateData.purchase_rate) updateFields.purchase_rate = parseFloat(updateData.purchase_rate)
         if (updateData.mrp) updateFields.mrp = parseFloat(updateData.mrp)
         if (updateData.batch_number !== undefined) updateFields.batch_number = updateData.batch_number
