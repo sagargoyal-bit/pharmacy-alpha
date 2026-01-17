@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import AutocompleteDropdown from '@/components/ui/AutocompleteDropdown'
+import { supabase } from '@/lib/supabase'
 
 export default function ExpiryTracking() {
     // Filter state
@@ -181,7 +182,28 @@ export default function ExpiryTracking() {
                 params.append('days', appliedFilters.days.toString())
             }
             
-            const response = await fetch(`/api/expiry?${params.toString()}`)
+            // Get the current session and add auth header
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session?.access_token) {
+                alert('Authentication required. Please log in again.')
+                return
+            }
+            
+            const response = await fetch(`/api/expiry?${params.toString()}`, {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            })
+            
+            if (!response.ok) {
+                console.error('Failed to fetch expiry data:', response.status, response.statusText)
+                alert(`Failed to fetch data: ${response.statusText}`)
+                return
+            }
+            
             const allData = await response.json()
             
             if (!allData.data || allData.data.length === 0) {

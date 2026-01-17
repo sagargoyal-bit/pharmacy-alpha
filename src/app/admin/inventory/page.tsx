@@ -136,6 +136,7 @@ export default function InventoryManagement() {
             [item.id]: {
                 medicine_name: item.medicine_name,
                 quantity: item.quantity,
+                weight: item.weight,
                 purchase_rate: item.purchase_rate,
                 mrp: item.mrp,
                 batch_number: item.batch_number,
@@ -191,9 +192,15 @@ export default function InventoryManagement() {
             if (updateData.medicine_name && updateData.medicine_name !== item.medicine_name) {
                 alert(`✅ Purchase updated! Medicine name changed to: ${updateData.medicine_name}`)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Update failed:', error)
-            alert('Failed to update purchase item')
+            
+            // Check if it's a conflict error (duplicate entry)
+            if (error?.status === 409 || error?.data?.code === 'DUPLICATE_ENTRY') {
+                alert('❌ Cannot update: A purchase with this medicine name, batch number, and expiry date already exists.\n\nPlease change the batch number or expiry date to make this entry unique.')
+            } else {
+                alert('Failed to update purchase item. Please try again.')
+            }
         }
     }
 
@@ -485,6 +492,7 @@ export default function InventoryManagement() {
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Supplier</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Batch Number</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Quantity</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Weight</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Rate</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">MRP</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Expiry Date</th>
@@ -501,6 +509,7 @@ export default function InventoryManagement() {
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-20 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
+                                        <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-20 rounded"></div></td>
@@ -519,12 +528,15 @@ export default function InventoryManagement() {
                                             {/* Medicine Name - Editable */}
                                             <td className="px-4 py-3 text-sm text-gray-900">
                                                 {isEditing ? (
-                                                    <input
-                                                        type="text"
+                                                    <AutocompleteDropdown
+                                                        fieldType="medicine_name"
                                                         value={editData.medicine_name || ''}
-                                                        onChange={(e) => handleFieldChange(item.id, 'medicine_name', e.target.value)}
-                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                        placeholder="Enter medicine name"
+                                                        onChange={(value) => handleFieldChange(item.id, 'medicine_name', value)}
+                                                        placeholder="Select or enter medicine name"
+                                                        required
+                                                        className="w-full px-2 py-1 text-sm"
+                                                        inTable={true}
+                                                        dropdownDirection="auto"
                                                     />
                                                 ) : (
                                                     <div>
@@ -564,6 +576,22 @@ export default function InventoryManagement() {
                                                     />
                                                 ) : (
                                                     item.quantity
+                                                )}
+                                            </td>
+
+                                            {/* Weight - Editable */}
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                {isEditing ? (
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editData.weight || ''}
+                                                        onChange={(e) => handleFieldChange(item.id, 'weight', e.target.value)}
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                        placeholder="0.00"
+                                                    />
+                                                ) : (
+                                                    item.weight ? `${item.weight} ml` : '-'
                                                 )}
                                             </td>
 

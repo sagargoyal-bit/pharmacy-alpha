@@ -1,20 +1,24 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         console.log('Fetching dashboard stats...')
         
-        // Get the first pharmacy (assuming single pharmacy setup for now)
-        const { data: pharmacy, error: pharmacyError } = await supabase
-            .from('pharmacies')
-            .select('id, name')
-            .limit(1)
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
+        // Get user's pharmacy ID
+        const { data: userPharmacy, error: pharmacyError } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id, pharmacies(id, name)')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
             .single()
 
-        console.log('Pharmacy query result:', { pharmacy, pharmacyError })
+        console.log('User pharmacy query result:', { userPharmacy, pharmacyError })
 
-        if (pharmacyError || !pharmacy) {
+        if (pharmacyError || !userPharmacy) {
             console.warn('No pharmacy found or error:', pharmacyError)
             
             // Return zero stats but with debug info
@@ -39,7 +43,7 @@ export async function GET() {
             })
         }
 
-        console.log('Found pharmacy:', pharmacy.name, 'ID:', pharmacy.id)
+        console.log('Found pharmacy:', userPharmacy.pharmacies.name, 'ID:', userPharmacy.pharmacy_id)
 
         // Get current date and calculate comparison dates
         const today = new Date()
@@ -60,13 +64,13 @@ export async function GET() {
         const { data: currentMedicines, error: medicinesError } = await supabase
             .from('current_inventory')
             .select('medicine_id', { count: 'exact' })
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .gt('current_stock', 0)
 
         const { data: lastMonthMedicines, error: lastMonthMedicinesError } = await supabase
             .from('stock_transactions')
             .select('medicine_id', { count: 'exact' })
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .gte('created_at', lastMonthStr)
             .lt('created_at', todayStr)
 
@@ -88,13 +92,13 @@ export async function GET() {
         const { data: todaysPurchases, error: purchasesError } = await supabase
             .from('purchases')
             .select('total_amount')
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .eq('purchase_date', todayStr)
 
         const { data: yesterdaysPurchases, error: yesterdaysPurchasesError } = await supabase
             .from('purchases')
             .select('total_amount')
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .eq('purchase_date', yesterdayStr)
 
         const todaysPurchasesTotal = todaysPurchases?.reduce((sum: number, p: any) => sum + (p.total_amount || 0), 0) || 0
@@ -120,7 +124,7 @@ export async function GET() {
         const { count: currentExpiringCount, error: expiryError } = await supabase
             .from('current_inventory')
             .select('*', { count: 'exact' })
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .lte('expiry_date', expiryDate)
             .gt('current_stock', 0)
 
@@ -128,7 +132,7 @@ export async function GET() {
         const { data: historicalInventory, error: historicalExpiryError } = await supabase
             .from('stock_transactions')
             .select('medicine_id, expiry_date', { count: 'exact' })
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .eq('transaction_date', thirtyDaysAgoStr)
             .lte('expiry_date', expiryDate)
 
@@ -150,7 +154,7 @@ export async function GET() {
         const { data: currentStockValue, error: stockError } = await supabase
             .from('current_inventory')
             .select('current_stock, last_purchase_rate')
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .gt('current_stock', 0)
 
         const currentTotalStockValue = currentStockValue?.reduce((sum: number, item: any) => {
@@ -161,7 +165,7 @@ export async function GET() {
         const { data: lastMonthStockData, error: lastMonthStockError } = await supabase
             .from('stock_transactions')
             .select('quantity_in, rate')
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .gte('created_at', lastMonthStr)
             .lt('created_at', todayStr)
 
@@ -202,7 +206,7 @@ export async function GET() {
                     medicines!inner(name)
                 )
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .order('created_at', { ascending: false })
             .limit(3)
 
@@ -230,7 +234,7 @@ export async function GET() {
                 created_at,
                 medicines!inner(name)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .order('created_at', { ascending: false })
             .limit(2)
 
@@ -263,7 +267,7 @@ export async function GET() {
             stock_value_trend: stockValueTrend,
             recent_activity: recentActivity.slice(0, 5),
             debug: {
-                pharmacy: pharmacy.name,
+                pharmacy: userPharmacy.pharmacies.name,
                 comparison_dates: {
                     today: todayStr,
                     yesterday: yesterdayStr,
@@ -285,6 +289,15 @@ export async function GET() {
         return NextResponse.json(stats)
     } catch (error) {
         console.error('Dashboard stats error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         const errorName = error instanceof Error ? error.name : 'UnknownError'
         

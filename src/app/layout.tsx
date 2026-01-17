@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store/providers/StoreProvider";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 import { NotificationToast } from "@/components/ui/NotificationToast";
 
 const geist = Geist({
@@ -29,10 +30,12 @@ export default function RootLayout({
       <body
         className={`${geist.variable} ${geistMono.variable} antialiased`}
       >
-        <StoreProvider>
-          {children}
-          <NotificationToast />
-        </StoreProvider>
+        <AuthProvider>
+          <StoreProvider>
+            {children}
+            <NotificationToast />
+          </StoreProvider>
+        </AuthProvider>
       </body>
     </html>
   );

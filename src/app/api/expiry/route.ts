@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const { searchParams } = new URL(request.url)
         const type = searchParams.get('type') // 'stats' for statistics endpoint
         const days = parseInt(searchParams.get('days') || '90')
@@ -16,14 +19,15 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // Get the first pharmacy
-        const { data: pharmacy, error: pharmacyError } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
+        // Get user's pharmacy ID
+        const { data: userPharmacy } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
             .single()
 
-        if (!pharmacy) {
+        if (!userPharmacy) {
             return NextResponse.json(type === 'stats' ? {
                 expiredThisWeek: 0,
                 expiringIn30Days: 0,
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
             const { data: expiredThisWeek } = await supabase
                 .from('current_inventory')
                 .select('*')
-                .eq('pharmacy_id', pharmacy.id)
+                .eq('pharmacy_id', userPharmacy.pharmacy_id)
                 .eq('is_active', true)
                 .gt('current_stock', 0)
                 .gte('expiry_date', oneWeekAgo.toISOString().split('T')[0])
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
             const { data: expiringIn30 } = await supabase
                 .from('current_inventory')
                 .select('*')
-                .eq('pharmacy_id', pharmacy.id)
+                .eq('pharmacy_id', userPharmacy.pharmacy_id)
                 .eq('is_active', true)
                 .gt('current_stock', 0)
                 .gte('expiry_date', today.toISOString().split('T')[0])
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
             const { data: expiringIn90 } = await supabase
                 .from('current_inventory')
                 .select('*')
-                .eq('pharmacy_id', pharmacy.id)
+                .eq('pharmacy_id', userPharmacy.pharmacy_id)
                 .eq('is_active', true)
                 .gt('current_stock', 0)
                 .gte('expiry_date', today.toISOString().split('T')[0])
@@ -83,7 +87,7 @@ export async function GET(request: NextRequest) {
                     *,
                     medicines!inner(name)
                 `)
-                .eq('pharmacy_id', pharmacy.id)
+                .eq('pharmacy_id', userPharmacy.pharmacy_id)
                 .eq('is_active', true)
                 .gt('current_stock', 0)
                 .gte('expiry_date', today.toISOString().split('T')[0])
@@ -137,7 +141,7 @@ export async function GET(request: NextRequest) {
                 *,
                 medicines!inner(name)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .eq('is_active', true)
             .gt('current_stock', 0)
 
@@ -342,6 +346,15 @@ export async function GET(request: NextRequest) {
         })
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to fetch expiry data' },
             { status: 500 }

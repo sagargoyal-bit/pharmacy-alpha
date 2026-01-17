@@ -16,7 +16,7 @@ export interface Medicine {
     generic_name: string
     brand_name?: string
     manufacturer: string
-    category_id?: string
+    // category_id removed - medicine_categories table no longer exists
     composition?: string
     strength?: string
     dosage_form?: string

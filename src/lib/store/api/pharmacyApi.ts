@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { Medicine, Purchase, Supplier } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 // Enhanced interfaces for API operations
 export interface CreatePurchaseRequest {
@@ -45,6 +46,7 @@ export interface PurchaseSearchResult {
     supplier_name: string
     batch_number: string
     quantity: number
+    weight?: number
     purchase_rate: number
     mrp: number
     expiry_date: string | null
@@ -114,8 +116,12 @@ export const pharmacyApi = createApi({
     reducerPath: 'pharmacyApi',
     baseQuery: fetchBaseQuery({
         baseUrl: '/api/',
-        prepareHeaders: (headers) => {
-            // Add any auth headers here if needed
+        prepareHeaders: async (headers) => {
+            // Get the current session and add auth header
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+                headers.set('authorization', `Bearer ${session.access_token}`)
+            }
             return headers
         },
     }),

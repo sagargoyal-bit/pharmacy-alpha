@@ -37,7 +37,7 @@ interface UiState {
             searchTerm: string
         }
         inventory: {
-            category: string
+            // category removed - medicine_categories table no longer exists
             lowStock: boolean
             searchTerm: string
         }
@@ -73,7 +73,7 @@ const initialState: UiState = {
             searchTerm: '',
         },
         inventory: {
-            category: '',
+            // category removed - medicine_categories table no longer exists
             lowStock: false,
             searchTerm: '',
         },

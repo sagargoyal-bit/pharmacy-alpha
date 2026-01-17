@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 // Helper function to check if a medicine is still referenced in any table
 async function checkMedicineReferences(supabaseClient: any, medicine_id: string): Promise<boolean> {
@@ -52,17 +53,7 @@ async function checkMedicineReferences(supabaseClient: any, medicine_id: string)
             return true // Still referenced in stock_transactions
         }
 
-        // Check expiry_alerts table (may not exist)
-        const { data: alertItems, error: alertError } = await supabaseClient
-            .from('expiry_alerts')
-            .select('id')
-            .eq('medicine_id', medicine_id)
-            .limit(1)
-
-        // Don't treat expiry_alerts errors as critical since table may not exist
-        if (!alertError && alertItems && alertItems.length > 0) {
-            return true // Still referenced in expiry_alerts
-        }
+        // expiry_alerts table removed - no longer needed for reference checking
 
         // No references found - safe to delete
         return false
@@ -105,15 +96,7 @@ async function cascadeDeleteFromRelatedTables(
             console.error('Stock transactions cascade delete error:', transactionDeleteError)
         }
 
-        // Delete from expiry_alerts table if it exists
-        const { error: alertDeleteError } = await supabaseClient
-            .from('expiry_alerts')
-            .delete()
-            .eq('medicine_id', medicine_id)
-            .eq('batch_number', batch_number)
-            .eq('expiry_date', expiry_date)
-
-        // Don't log expiry_alerts errors as this table may not exist
+        // expiry_alerts table removed - cascade delete no longer needed
 
         // Check if this medicine is still referenced anywhere else
         const isStillReferenced = await checkMedicineReferences(supabaseClient, medicine_id)
@@ -227,21 +210,7 @@ async function cascadeUpdatesToRelatedTables(
             }
         }
 
-        // 3. Update expiry_alerts table if it exists
-        if (updateFields.batch_number || updateFields.expiry_date) {
-            const alertUpdateFields: any = {}
-            if (updateFields.batch_number) alertUpdateFields.batch_number = newBatchNumber
-            if (updateFields.expiry_date) alertUpdateFields.expiry_date = newExpiryDate
-
-            const { error: alertError } = await supabaseClient
-                .from('expiry_alerts')
-                .update(alertUpdateFields)
-                .eq('medicine_id', medicine_id)
-                .eq('batch_number', oldBatchNumber)
-                .eq('expiry_date', oldExpiryDate)
-
-            // Don't log expiry_alerts errors as this table may not exist
-        }
+        // 3. expiry_alerts table removed - updates no longer needed
 
         // 4. Recalculate and update parent purchase total_amount if financial fields changed
         if (updateFields.quantity || updateFields.purchase_rate || updateFields.mrp) {
@@ -280,6 +249,9 @@ async function cascadeUpdatesToRelatedTables(
 
 export async function GET(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const { searchParams } = new URL(request.url)
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')
@@ -291,7 +263,7 @@ export async function GET(request: NextRequest) {
         const batchNumber = searchParams.get('batch_number')
         const purchaseDate = searchParams.get('date')
 
-        // Build the base query
+        // Build the base query - RLS will automatically filter to user's pharmacy
         let query = supabase
             .from('purchases')
             .select(`
@@ -314,6 +286,7 @@ export async function GET(request: NextRequest) {
           batch_number,
           expiry_date,
           quantity,
+          weight,
           free_quantity,
           total_quantity,
           mrp,
@@ -391,6 +364,7 @@ export async function GET(request: NextRequest) {
                 supplier_name: purchase.suppliers?.name || 'Unknown',
                 batch_number: item.batch_number || '',
                 quantity: item.quantity || 0,
+                weight: item.weight || null,
                 purchase_rate: item.purchase_rate || 0,
                 mrp: item.mrp || 0,
                 expiry_date: item.expiry_date,
@@ -411,6 +385,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(transformedPurchases)
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to fetch purchases' },
             { status: 500 }
@@ -420,6 +403,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const body = await request.json()
 
         // Validate the request body
@@ -430,31 +416,17 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Get the current user (you might need to implement auth middleware)
-        // For now, we'll use the first user or require user_id in the request
-        const { data: users } = await supabase
-            .from('users')
-            .select('id')
-            .limit(1)
-        console.log("user", users)
-        console.log("data", body)
+        // Get user's pharmacy ID
+        const { data: userPharmacy } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single()
 
-        if (!users || users.length === 0) {
+        if (!userPharmacy) {
             return NextResponse.json(
-                { error: 'No users found. Please create a user first.' },
-                { status: 400 }
-            )
-        }
-
-        // Get the pharmacy (assuming single pharmacy for now)
-        const { data: pharmacies } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
-
-        if (!pharmacies || pharmacies.length === 0) {
-            return NextResponse.json(
-                { error: 'No pharmacy found. Please create a pharmacy first.' },
+                { error: 'No pharmacy found for user. Please contact administrator.' },
                 { status: 400 }
             )
         }
@@ -465,7 +437,7 @@ export async function POST(request: NextRequest) {
             .from('suppliers')
             .select('id')
             .eq('name', body.supplier_name)
-            .eq('pharmacy_id', pharmacies[0].id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .single()
 
         if (existingSupplier) {
@@ -475,7 +447,7 @@ export async function POST(request: NextRequest) {
             const { data: newSupplier, error: supplierError } = await supabase
                 .from('suppliers')
                 .insert({
-                    pharmacy_id: pharmacies[0].id,
+                    pharmacy_id: userPharmacy.pharmacy_id,
                     name: body.supplier_name,
                     contact_person: 'Auto-created',
                     is_active: true
@@ -502,9 +474,9 @@ export async function POST(request: NextRequest) {
         const purchaseDate = body.date || new Date().toISOString().split('T')[0]
 
         console.log('Purchase data being inserted:', {
-            pharmacy_id: pharmacies[0].id,
+            pharmacy_id: userPharmacy.pharmacy_id,
             supplier_id: supplierId,
-            user_id: users[0].id,
+            user_id: user.id,
             invoice_number: body.invoice_number,
             invoice_date: purchaseDate,
             purchase_date: purchaseDate,
@@ -519,7 +491,7 @@ export async function POST(request: NextRequest) {
         const { data: existingPurchase } = await supabase
             .from('purchases')
             .select('id')
-            .eq('pharmacy_id', pharmacies[0].id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .eq('supplier_id', supplierId)
             .eq('invoice_number', invoiceNumber)
             .single()
@@ -537,9 +509,9 @@ export async function POST(request: NextRequest) {
         const { data: purchase, error: purchaseError } = await supabase
             .from('purchases')
             .insert({
-                pharmacy_id: pharmacies[0].id,
+                pharmacy_id: userPharmacy.pharmacy_id,
                 supplier_id: supplierId,
-                user_id: users[0].id,
+                user_id: user.id,
                 invoice_number: invoiceNumber,
                 invoice_date: purchaseDate,
                 purchase_date: purchaseDate,
@@ -625,6 +597,7 @@ export async function POST(request: NextRequest) {
                 batch_number: item.batch_number || 'AUTO-' + Date.now(),
                 expiry_date: formattedExpiryDate,
                 quantity: parseInt(item.quantity) || 0,
+                weight: item.weight ? parseFloat(item.weight) : null,
                 free_quantity: 0,
                 mrp: parseFloat(item.mrp) || 0,
                 purchase_rate: parseFloat(item.rate) || 0,
@@ -668,9 +641,28 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(completePurchase, { status: 201 })
     } catch (error) {
-        console.error('API error:', error)
+        console.error('❌ Purchase creation error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
+        // Return detailed error for debugging
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
+        console.error('Full error details:', { errorMessage, errorStack })
+        
         return NextResponse.json(
-            { error: 'Failed to create purchase' },
+            { 
+                error: 'Failed to create purchase',
+                details: errorMessage,
+                debug: process.env.NODE_ENV === 'development' ? errorStack : undefined
+            },
             { status: 500 }
         )
     }
@@ -678,6 +670,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const body = await request.json()
         const { purchase_item_id, ...updateData } = body
 
@@ -712,35 +707,90 @@ export async function PUT(request: NextRequest) {
 
 
 
-        // STEP 2: Handle medicine name change (update medicine record directly)
-        if (updateData.medicine_name) {
-            const { error: medicineUpdateError } = await supabase
-                .from('medicines')
-                .update({
-                    name: updateData.medicine_name,
-                    generic_name: updateData.medicine_name,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', currentItem.medicine_id)
-
-            if (medicineUpdateError) {
-                console.error('Medicine update error:', medicineUpdateError)
-                return NextResponse.json(
-                    { error: 'Failed to update medicine name' },
-                    { status: 500 }
-                )
-            }
-
-
-        }
-
-        // STEP 3: Prepare purchase_items update fields with financial calculations
+        // STEP 2: Prepare purchase_items update fields with financial calculations
         const updateFields: any = {}
         if (updateData.quantity) updateFields.quantity = parseInt(updateData.quantity)
+        if (updateData.weight !== undefined) updateFields.weight = updateData.weight ? parseFloat(updateData.weight) : null
         if (updateData.purchase_rate) updateFields.purchase_rate = parseFloat(updateData.purchase_rate)
         if (updateData.mrp) updateFields.mrp = parseFloat(updateData.mrp)
         if (updateData.batch_number !== undefined) updateFields.batch_number = updateData.batch_number
         if (updateData.expiry_date) updateFields.expiry_date = updateData.expiry_date
+
+        // STEP 3: Handle medicine name change
+        // Instead of updating the medicine record, find or create a medicine with the new name
+        // and add medicine_id to the updateFields
+        if (updateData.medicine_name) {
+            // Search for existing medicine with this name
+            const { data: existingMedicine } = await supabase
+                .from('medicines')
+                .select('id')
+                .eq('name', updateData.medicine_name)
+                .single()
+
+            let newMedicineId;
+
+            if (existingMedicine) {
+                // Use existing medicine
+                console.log('✅ Found existing medicine:', existingMedicine.id)
+                newMedicineId = existingMedicine.id
+            } else {
+                // Create new medicine
+                console.log('🆕 Creating new medicine:', updateData.medicine_name)
+                const { data: newMedicine, error: medicineError } = await supabase
+                    .from('medicines')
+                    .insert({
+                        name: updateData.medicine_name,
+                        generic_name: updateData.medicine_name,
+                        manufacturer: 'Unknown',
+                        unit_type: 'strips',
+                        is_active: true
+                    })
+                    .select('id')
+                    .single()
+
+                if (medicineError) {
+                    console.error('❌ Medicine creation error:', medicineError)
+                    return NextResponse.json(
+                        { error: 'Failed to create medicine' },
+                        { status: 500 }
+                    )
+                }
+                newMedicineId = newMedicine.id
+            }
+
+            // Check if updating to this medicine_id would violate the unique constraint
+            // (medicine_id, batch_number, expiry_date) must be unique
+            // Use the NEW values if they're being updated, otherwise use current values
+            const batchNumber = updateFields.batch_number !== undefined ? updateFields.batch_number : currentItem.batch_number
+            const expiryDate = updateFields.expiry_date !== undefined ? updateFields.expiry_date : currentItem.expiry_date
+
+            // Only check for conflicts if we're actually changing the medicine_id
+            if (newMedicineId !== currentItem.medicine_id) {
+                const { data: conflictingItem } = await supabase
+                    .from('purchase_items')
+                    .select('id')
+                    .eq('medicine_id', newMedicineId)
+                    .eq('batch_number', batchNumber)
+                    .eq('expiry_date', expiryDate)
+                    .neq('id', purchase_item_id) // Exclude current item
+                    .single()
+
+                if (conflictingItem) {
+                    console.error('⚠️ Conflict: Another purchase item already exists with this medicine, batch, and expiry combination')
+                    return NextResponse.json(
+                        { 
+                            error: 'Cannot update: A purchase item with this medicine name, batch number, and expiry date already exists. Please use a different batch number or expiry date.',
+                            code: 'DUPLICATE_ENTRY'
+                        },
+                        { status: 409 } // 409 Conflict
+                    )
+                }
+            }
+
+            // Add medicine_id to updateFields so it's updated in the same operation
+            updateFields.medicine_id = newMedicineId
+            console.log(`✅ Will update purchase item to reference medicine: ${newMedicineId}`)
+        }
 
         // Note: Financial calculations (gross_amount, net_amount, etc.) are automatically
         // handled by database triggers when quantity or purchase_rate changes
@@ -854,6 +904,15 @@ export async function PUT(request: NextRequest) {
 
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to update purchase item' },
             { status: 500 }
@@ -863,6 +922,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const { searchParams } = new URL(request.url)
         const purchase_item_id = searchParams.get('purchase_item_id')
 
@@ -979,6 +1041,15 @@ export async function DELETE(request: NextRequest) {
 
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to delete purchase item' },
             { status: 500 }

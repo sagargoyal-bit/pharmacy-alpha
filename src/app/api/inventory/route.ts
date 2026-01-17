@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const { searchParams } = new URL(request.url)
         const lowStock = searchParams.get('lowStock') === 'true'
         const search = searchParams.get('search')
@@ -10,22 +13,10 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // Get the first pharmacy
-        const { data: pharmacy } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
-            .single()
-
-        if (!pharmacy) {
-            return NextResponse.json([])
-        }
-
-        // Use the view for current stock summary
+        // Use the view for current stock summary - RLS will filter to user's pharmacy
         let query = supabase
             .from('view_current_stock_summary')
             .select('*')
-            .eq('pharmacy_id', pharmacy.id)
 
         // Add search filter
         if (search) {
@@ -52,6 +43,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(inventory || [])
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to fetch inventory' },
             { status: 500 }

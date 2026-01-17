@@ -118,6 +118,10 @@ FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can add medicines" ON public.medicines
 FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
+-- Only authenticated users can update medicines
+CREATE POLICY "Authenticated users can update medicines" ON public.medicines
+FOR UPDATE USING (auth.uid() IS NOT NULL);
+
 -- ===============================================
 -- 8. MEDICINE CATEGORIES POLICIES
 -- ===============================================

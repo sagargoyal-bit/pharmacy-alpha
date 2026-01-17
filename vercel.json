@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cleanup-expired",
+      "schedule": "0 12 1 1 *"
+    }
+  ],
+  "env": {
+    "CLEANUP_RETENTION_YEARS": "2",
+    "NEXT_PUBLIC_CLEANUP_RETENTION_YEARS": "2"
+  }
+}
