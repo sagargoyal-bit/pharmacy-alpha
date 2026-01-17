@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { supabase } from '@/lib/supabase'
 
 // Type definitions
 export type FieldType = 'medicine_name' | 'supplier_name' | 'batch_number'
@@ -77,9 +78,24 @@ function useAutocompleteData(fieldType: FieldType, query: string) {
             }
 
             const url = `${endpoint}?${searchParam}=${encodeURIComponent(searchQuery)}&limit=10`
-            const response = await fetch(url)
+            
+            // Get auth token for the request
+            const { data: { session } } = await supabase.auth.getSession()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+            
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`
+            }
+            
+            const response = await fetch(url, { headers })
+            console.log("response", response)
 
             if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in.')
+                }
                 throw new Error(`Failed to fetch ${fieldType} data`)
             }
 

@@ -1,13 +1,36 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        // Get the first pharmacy
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
+        // Get user's pharmacy ID
+        const { data: userPharmacy } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single()
+
+        if (!userPharmacy) {
+            return NextResponse.json({
+                todaysPurchases: 0,
+                thisMonth: 0,
+                totalEntries: 0,
+                differentSuppliers: 0,
+                recentPurchases: []
+            })
+        }
+
+        const pharmacyId = userPharmacy.pharmacy_id
+
+        // Get the pharmacy data
         const { data: pharmacy } = await supabase
             .from('pharmacies')
             .select('id')
-            .limit(1)
+            .eq('id', pharmacyId)
             .single()
 
         if (!pharmacy) {
@@ -28,7 +51,7 @@ export async function GET() {
                 total_amount,
                 purchase_items(id)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', pharmacyId)
             .eq('purchase_date', today)
 
         // Only count purchases that have items
@@ -47,7 +70,7 @@ export async function GET() {
                 total_amount,
                 purchase_items(id)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', pharmacyId)
             .gte('purchase_date', startOfMonthString)
 
         // Only count purchases that have items
@@ -62,7 +85,7 @@ export async function GET() {
                 id,
                 purchase_items(id)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', pharmacyId)
 
         const totalEntries = allPurchases
             ?.filter(p => p.purchase_items && p.purchase_items.length > 0)
@@ -75,7 +98,7 @@ export async function GET() {
                 supplier_id,
                 purchase_items(id)
             `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', pharmacyId)
 
         const uniqueSuppliers = new Set(
             suppliersData
@@ -100,7 +123,7 @@ export async function GET() {
           medicines(name, generic_name)
         )
       `)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', pharmacyId)
             .order('created_at', { ascending: false })
             .limit(10)
 
@@ -144,6 +167,15 @@ export async function GET() {
 
     } catch (error) {
         console.error('Purchases stats error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json({
             error: 'Failed to fetch purchases stats',
             details: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
@@ -47,6 +48,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        // Require authentication for adding medicines
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const body = await request.json()
 
         // Validate required fields
@@ -90,6 +94,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(medicine, { status: 201 })
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to create medicine' },
             { status: 500 }

@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const { searchParams } = new URL(request.url)
         const search = searchParams.get('search')
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // Get the first pharmacy
-        const { data: pharmacy } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
-            .single()
-
-        if (!pharmacy) {
-            return NextResponse.json([])
-        }
-
+        // With RLS enabled, the query will automatically filter to user's pharmacy
         let query = supabase
             .from('suppliers')
             .select('*')
-            .eq('pharmacy_id', pharmacy.id)
             .eq('is_active', true)
 
         // Add search filter (case insensitive)
@@ -47,6 +39,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(suppliers || [])
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to fetch suppliers' },
             { status: 500 }
@@ -56,18 +57,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const body = await request.json()
 
-        // Get the first pharmacy
-        const { data: pharmacy } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
+        // Get user's pharmacy ID
+        const { data: userPharmacy } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
             .single()
 
-        if (!pharmacy) {
+        if (!userPharmacy) {
             return NextResponse.json(
-                { error: 'No pharmacy found' },
+                { error: 'No pharmacy found for user' },
                 { status: 400 }
             )
         }
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
         const { data: supplier, error } = await supabase
             .from('suppliers')
             .insert({
-                pharmacy_id: pharmacy.id,
+                pharmacy_id: userPharmacy.pharmacy_id,
                 name: body.name,
                 contact_person: body.contact_person,
                 phone: body.phone,
@@ -122,6 +127,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
+        // Get authenticated user and supabase client
+        const { user, supabase } = await getAuthenticatedUser(request)
+        
         const body = await request.json()
         const { supplier_id, new_name } = body
 
@@ -132,16 +140,17 @@ export async function PUT(request: NextRequest) {
             )
         }
 
-        // Get the first pharmacy
-        const { data: pharmacy } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .limit(1)
+        // Get user's pharmacy ID
+        const { data: userPharmacy } = await supabase
+            .from('user_pharmacies')
+            .select('pharmacy_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
             .single()
 
-        if (!pharmacy) {
+        if (!userPharmacy) {
             return NextResponse.json(
-                { error: 'No pharmacy found' },
+                { error: 'No pharmacy found for user' },
                 { status: 400 }
             )
         }
@@ -151,7 +160,7 @@ export async function PUT(request: NextRequest) {
             .from('suppliers')
             .select('id, name')
             .eq('id', supplier_id)
-            .eq('pharmacy_id', pharmacy.id)
+            .eq('pharmacy_id', userPharmacy.pharmacy_id)
             .single()
 
         if (supplierError || !existingSupplier) {
@@ -188,6 +197,15 @@ export async function PUT(request: NextRequest) {
 
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to update supplier' },
             { status: 500 }

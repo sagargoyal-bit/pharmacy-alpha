@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        // Get the first user (in a real app, this would be based on authentication)
+        // Get authenticated user and supabase client
+        const { user: authUser, supabase } = await getAuthenticatedUser(request)
+
+        // Get the user details from the users table
         const { data: user, error: userError } = await supabase
             .from('users')
             .select(`
@@ -16,7 +19,7 @@ export async function GET() {
                 created_at,
                 updated_at
             `)
-            .limit(1)
+            .eq('id', authUser.id)
             .single()
 
         if (userError || !user) {
@@ -66,7 +69,8 @@ export async function GET() {
                 owner_id,
                 is_active,
                 created_at,
-                updated_at
+                updated_at,
+                last_cleanup_date
             `)
             .eq('id', userPharmacy.pharmacy_id)
             .single()
@@ -121,6 +125,15 @@ export async function GET() {
 
     } catch (error) {
         console.error('API error:', error)
+        
+        // Handle authentication errors
+        if (error instanceof Error && error.message.includes('Authentication')) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+        
         return NextResponse.json(
             { error: 'Failed to fetch user information' },
             { status: 500 }
