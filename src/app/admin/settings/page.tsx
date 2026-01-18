@@ -111,7 +111,7 @@ export default function AdminSettings() {
 
     const getDataRetentionInfo = () => {
         const currentYear = new Date().getFullYear()
-        const retentionYears = parseInt(process.env.NEXT_PUBLIC_CLEANUP_RETENTION_YEARS || '2', 10)
+        const retentionYears = parseInt(process.env.NEXT_PUBLIC_CLEANUP_RETENTION_YEARS || '4', 10)
         const cutoffYear = currentYear - retentionYears
         
         const lastCleanup = userPharmacyData?.pharmacy.last_cleanup_date

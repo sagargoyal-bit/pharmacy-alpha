@@ -34,7 +34,7 @@ export interface CleanupResult {
  * Default is 2 years if not specified in environment
  */
 export function calculateCutoffDate(): Date {
-    const retentionYears = parseInt(process.env.CLEANUP_RETENTION_YEARS || '2', 10)
+    const retentionYears = parseInt(process.env.CLEANUP_RETENTION_YEARS || '4', 10)
     const currentYear = new Date().getFullYear()
     const cutoffYear = currentYear - retentionYears
     return new Date(cutoffYear, 0, 1) // January 1st, N years ago
