@@ -4,6 +4,7 @@ import "./globals.css";
 import { StoreProvider } from "@/lib/store/providers/StoreProvider";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { NotificationToast } from "@/components/ui/NotificationToast";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AuthProvider>
           <StoreProvider>
             {children}
+            <SpeedInsights />
             <NotificationToast />
           </StoreProvider>
         </AuthProvider>
