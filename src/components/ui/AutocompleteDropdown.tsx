@@ -78,7 +78,9 @@ function useAutocompleteData(fieldType: FieldType, query: string) {
                     throw new Error(`Unknown field type: ${fieldType}`)
             }
 
-            const url = `${endpoint}?${searchParam}=${encodeURIComponent(searchQuery)}&limit=10`
+            // Convert search query to uppercase for case-insensitive search
+            const uppercaseQuery = searchQuery.toUpperCase()
+            const url = `${endpoint}?${searchParam}=${encodeURIComponent(uppercaseQuery)}&limit=10`
             
             // Get auth token for the request
             const { data: { session } } = await supabase.auth.getSession()
@@ -123,7 +125,7 @@ function getTooltipText(fieldType: FieldType, option: AutocompleteOption): strin
             
         case 'supplier_name':
             const sup = option.metadata
-            return `Supplier: ${sup?.name || option.value}${sup?.contact_person ? `\nContact: ${sup.contact_person}` : ''}${sup?.phone ? `\nPhone: ${sup.phone}` : ''}${sup?.email ? `\nEmail: ${sup.email}` : ''}${sup?.city ? `\nCity: ${sup.city}` : ''}`
+            return `Supplier: ${sup?.name || option.value}`
             
         case 'batch_number':
             const batch = option.metadata
@@ -143,7 +145,7 @@ function transformDataToOptions(fieldType: FieldType, data: any[], searchQuery: 
             return data.map(item => ({
                 id: item.id || item.name,
                 value: item.name,
-                label: `${item.name}${item.generic_name ? ` (${item.generic_name})` : ''}${item.manufacturer ? ` - ${item.manufacturer}` : ''}`,
+                label: `${item.name}`,
                 metadata: item
             }))
 
@@ -151,7 +153,7 @@ function transformDataToOptions(fieldType: FieldType, data: any[], searchQuery: 
             return data.map(item => ({
                 id: item.id || item.name,
                 value: item.name,
-                label: `${item.name}${item.contact_person ? ` (${item.contact_person})` : ''}${item.city ? ` - ${item.city}` : ''}`,
+                label: `${item.name}`,
                 metadata: item
             }))
 

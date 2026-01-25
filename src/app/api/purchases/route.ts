@@ -262,6 +262,7 @@ export async function GET(request: NextRequest) {
         const supplierName = searchParams.get('supplier_name')
         const batchNumber = searchParams.get('batch_number')
         const purchaseDate = searchParams.get('date')
+        const purchaseId = searchParams.get('purchase_id')
 
         // Build the base query - RLS will automatically filter to user's pharmacy
         let query = supabase
@@ -307,6 +308,9 @@ export async function GET(request: NextRequest) {
       `)
 
         // Apply filters
+        if (purchaseId) {
+            query = query.eq('id', purchaseId)
+        }
         if (purchaseDate) {
             query = query.eq('purchase_date', purchaseDate)
         }
@@ -597,7 +601,7 @@ export async function POST(request: NextRequest) {
                 batch_number: item.batch_number || 'AUTO-' + Date.now(),
                 expiry_date: formattedExpiryDate,
                 quantity: parseInt(item.quantity) || 0,
-                weight: item.weight ? parseFloat(item.weight) : null,
+                weight: item.weight || null,
                 free_quantity: 0,
                 mrp: parseFloat(item.mrp) || 0,
                 purchase_rate: parseFloat(item.rate) || 0,
@@ -710,7 +714,7 @@ export async function PUT(request: NextRequest) {
         // STEP 2: Prepare purchase_items update fields with financial calculations
         const updateFields: any = {}
         if (updateData.quantity) updateFields.quantity = parseInt(updateData.quantity)
-        if (updateData.weight !== undefined) updateFields.weight = updateData.weight ? parseFloat(updateData.weight) : null
+        if (updateData.weight !== undefined) updateFields.weight = updateData.weight || null
         if (updateData.purchase_rate) updateFields.purchase_rate = parseFloat(updateData.purchase_rate)
         if (updateData.mrp) updateFields.mrp = parseFloat(updateData.mrp)
         if (updateData.batch_number !== undefined) updateFields.batch_number = updateData.batch_number
@@ -927,7 +931,99 @@ export async function DELETE(request: NextRequest) {
         
         const { searchParams } = new URL(request.url)
         const purchase_item_id = searchParams.get('purchase_item_id')
+        const purchase_item_ids = searchParams.get('purchase_item_ids')
 
+        // Check if this is a bulk delete request
+        if (purchase_item_ids) {
+            const idsArray = purchase_item_ids.split(',').filter(id => id.trim())
+            
+            if (idsArray.length === 0) {
+                return NextResponse.json(
+                    { error: 'No valid purchase item IDs provided' },
+                    { status: 400 }
+                )
+            }
+
+            const deletedItems: string[] = []
+            const failedItems: { id: string; error: string }[] = []
+
+            // Process each deletion
+            for (const itemId of idsArray) {
+                try {
+                    // STEP 1: Get complete purchase_item details before deleting
+                    const { data: itemToDelete, error: fetchError } = await supabase
+                        .from('purchase_items')
+                        .select(`
+                            id,
+                            purchase_id,
+                            medicine_id,
+                            batch_number,
+                            expiry_date,
+                            quantity,
+                            purchase_rate
+                        `)
+                        .eq('id', itemId.trim())
+                        .single()
+
+                    if (fetchError || !itemToDelete) {
+                        failedItems.push({ id: itemId, error: 'Item not found' })
+                        continue
+                    }
+
+                    const purchaseId = itemToDelete.purchase_id
+
+                    // STEP 2: Delete from purchase_items table
+                    const { error: deleteError } = await supabase
+                        .from('purchase_items')
+                        .delete()
+                        .eq('id', itemId.trim())
+
+                    if (deleteError) {
+                        failedItems.push({ id: itemId, error: deleteError.message })
+                        continue
+                    }
+
+                    // STEP 3: CASCADE DELETE from related tables
+                    await cascadeDeleteFromRelatedTables(supabase, itemToDelete)
+
+                    // STEP 4: Update or delete parent purchase
+                    const { data: remainingItems } = await supabase
+                        .from('purchase_items')
+                        .select('quantity, purchase_rate, gross_amount, net_amount')
+                        .eq('purchase_id', purchaseId)
+
+                    if (!remainingItems || remainingItems.length === 0) {
+                        // No items left, delete the entire purchase
+                        await supabase.from('purchases').delete().eq('id', purchaseId)
+                    } else {
+                        // Update purchase total
+                        const newTotal = remainingItems.reduce((sum, item) => sum + (item.net_amount || item.gross_amount || 0), 0)
+                        await supabase
+                            .from('purchases')
+                            .update({ total_amount: newTotal })
+                            .eq('id', purchaseId)
+                    }
+
+                    deletedItems.push(itemId)
+                } catch (error) {
+                    console.error(`Error deleting item ${itemId}:`, error)
+                    failedItems.push({ 
+                        id: itemId, 
+                        error: error instanceof Error ? error.message : 'Unknown error' 
+                    })
+                }
+            }
+
+            return NextResponse.json({
+                success: true,
+                deleted: deletedItems.length,
+                failed: failedItems.length,
+                deletedItems,
+                failedItems: failedItems.length > 0 ? failedItems : undefined
+            })
+        }
+
+        // Single item deletion (original logic)
         if (!purchase_item_id) {
             return NextResponse.json(
                 { error: 'Purchase item ID is required' },

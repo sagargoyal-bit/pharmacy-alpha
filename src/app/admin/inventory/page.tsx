@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchPurchasesQuery, useUpdatePurchaseItemMutation, useDeletePurchaseItemMutation, useGetPurchasesStatsQuery, useGetSuppliersQuery, useUpdateSupplierMutation, type PurchaseSearchResult } from '@/lib/store/api/pharmacyApi'
 import AutocompleteDropdown from '@/components/ui/AutocompleteDropdown'
+import { supabase } from '@/lib/supabase'
 
 export default function InventoryManagement() {
     const [filters, setFilters] = useState({
@@ -40,6 +41,18 @@ export default function InventoryManagement() {
         isOpen: false,
         itemId: '',
         medicineName: ''
+    })
+
+    // Multi-select state
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+    const [isSelectAllChecked, setIsSelectAllChecked] = useState(false)
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+    const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState<{
+        isOpen: boolean
+        items: PurchaseSearchResult[]
+    }>({
+        isOpen: false,
+        items: []
     })
 
     // RTK Query mutations and queries
@@ -89,6 +102,11 @@ export default function InventoryManagement() {
     const { data: searchResults = [], isLoading, error, refetch } = useSearchPurchasesQuery(searchParams || {}, {
         skip: !hasFilters
     })
+
+    // Clear selection when filters change or page changes
+    useEffect(() => {
+        handleClearSelection()
+    }, [debouncedFilters, currentPage])
 
     const handleFilterChange = (field: string, value: string) => {
         setFilters({
@@ -244,6 +262,107 @@ export default function InventoryManagement() {
         setDeleteConfirmation({ isOpen: false, itemId: '', medicineName: '' })
     }
 
+    // Multi-select handlers
+    const handleSelectAll = () => {
+        if (isSelectAllChecked) {
+            setSelectedItems(new Set())
+            setIsSelectAllChecked(false)
+        } else {
+            const allItemIds = new Set(
+                searchResults
+                    .map(item => item.purchase_item_id)
+                    .filter((id): id is string => Boolean(id))
+            )
+            setSelectedItems(allItemIds)
+            setIsSelectAllChecked(true)
+        }
+    }
+
+    const handleSelectItem = (purchaseItemId: string) => {
+        const newSelected = new Set(selectedItems)
+        if (newSelected.has(purchaseItemId)) {
+            newSelected.delete(purchaseItemId)
+        } else {
+            newSelected.add(purchaseItemId)
+        }
+        setSelectedItems(newSelected)
+        setIsSelectAllChecked(newSelected.size === searchResults.length && searchResults.length > 0)
+    }
+
+    const handleClearSelection = () => {
+        setSelectedItems(new Set())
+        setIsSelectAllChecked(false)
+    }
+
+    const handleBulkDeleteClick = () => {
+        const itemsToDelete = searchResults.filter(item => 
+            item.purchase_item_id && selectedItems.has(item.purchase_item_id)
+        )
+        setBulkDeleteConfirmation({
+            isOpen: true,
+            items: itemsToDelete
+        })
+    }
+
+    const handleBulkDeleteCancel = () => {
+        setBulkDeleteConfirmation({ isOpen: false, items: [] })
+    }
+
+    const handleBulkDeleteConfirm = async () => {
+        setIsBulkDeleting(true)
+        
+        try {
+            // Get auth token for the request
+            const { data: { session } } = await supabase.auth.getSession()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+            
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`
+            }
+
+            const itemIds = Array.from(selectedItems).join(',')
+            const response = await fetch(`/api/purchases?purchase_item_ids=${itemIds}`, {
+                method: 'DELETE',
+                headers
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to delete items')
+            }
+
+            const result = await response.json()
+
+            // Close modal and clear selection
+            setBulkDeleteConfirmation({ isOpen: false, items: [] })
+            handleClearSelection()
+
+            // Show success/error message
+            if (result.failed > 0) {
+                alert(`Deleted ${result.deleted} items. Failed to delete ${result.failed} items.`)
+            } else {
+                alert(`Successfully deleted ${result.deleted} item${result.deleted > 1 ? 's' : ''}`)
+            }
+
+            // Refresh data
+            if (hasFilters) {
+                refetch()
+            }
+            refetchStats()
+
+            // If all items on current page were deleted and we're not on page 1, go back
+            if (result.deleted === searchResults.length && currentPage > 1) {
+                setCurrentPage(currentPage - 1)
+            }
+        } catch (error) {
+            console.error('Bulk delete failed:', error)
+            alert('Failed to delete selected items. Please try again.')
+        } finally {
+            setIsBulkDeleting(false)
+        }
+    }
+
     const handleSupplierEdit = (supplier: any) => {
         setSelectedSupplier({ id: supplier.id, name: supplier.name })
         setNewSupplierName(supplier.name)
@@ -359,9 +478,6 @@ export default function InventoryManagement() {
                                                     className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0"
                                                 >
                                                     <div className="font-medium text-gray-900">{supplier.name}</div>
-                                                    {supplier.contact_person && (
-                                                        <div className="text-xs text-gray-500">Contact: {supplier.contact_person}</div>
-                                                    )}
                                                 </button>
                                             ))
                                         ) : supplierSearchTerm.length > 0 ? (
@@ -483,11 +599,44 @@ export default function InventoryManagement() {
 
             {/* Results Table */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Purchase Entries</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Purchase Entries</h3>
+                    
+                    {/* Bulk Action Bar */}
+                    {selectedItems.size > 0 && (
+                        <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <span className="text-sm font-medium text-blue-900">
+                                {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+                            </span>
+                            <button
+                                onClick={handleBulkDeleteClick}
+                                disabled={isBulkDeleting}
+                                className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
+                            </button>
+                            <button
+                                onClick={handleClearSelection}
+                                className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                            >
+                                Clear Selection
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full table-auto">
                         <thead>
                             <tr className="bg-gray-50">
+                                <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelectAllChecked}
+                                        onChange={handleSelectAll}
+                                        disabled={!hasFilters || searchResults.length === 0}
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    />
+                                </th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Medicine Name</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Supplier</th>
                                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Batch Number</th>
@@ -505,6 +654,7 @@ export default function InventoryManagement() {
                                 // Loading skeleton
                                 Array.from({ length: 5 }).map((_, index) => (
                                     <tr key={index} className="border-t border-gray-200">
+                                        <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-4 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-32 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div></td>
                                         <td className="px-4 py-3"><div className="animate-pulse bg-gray-200 h-4 w-20 rounded"></div></td>
@@ -522,9 +672,20 @@ export default function InventoryManagement() {
                                 searchResults.map((item: PurchaseSearchResult) => {
                                     const isEditing = editingRows.has(item.id)
                                     const editData = editValues[item.id] || {}
+                                    const isSelected = item.purchase_item_id ? selectedItems.has(item.purchase_item_id) : false
 
                                     return (
-                                        <tr key={item.id} className="border-t border-gray-200 hover:bg-gray-50">
+                                        <tr key={item.id} className={`border-t border-gray-200 ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                                            {/* Checkbox Column */}
+                                            <td className="px-4 py-3 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => item.purchase_item_id && handleSelectItem(item.purchase_item_id)}
+                                                    disabled={isEditing || !item.purchase_item_id}
+                                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                            </td>
                                             {/* Medicine Name - Editable */}
                                             <td className="px-4 py-3 text-sm text-gray-900">
                                                 {isEditing ? (
@@ -591,7 +752,7 @@ export default function InventoryManagement() {
                                                         placeholder="0.00"
                                                     />
                                                 ) : (
-                                                    item.weight ? `${item.weight} ml` : '-'
+                                                    item.weight ? `${item.weight}` : '-'
                                                 )}
                                             </td>
 
@@ -686,7 +847,7 @@ export default function InventoryManagement() {
                             ) : hasFilters && searchResults.length === 0 && !isLoading ? (
                                 // No results found
                                 <tr>
-                                    <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                                    <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center">
                                             <div className="text-4xl mb-4">🔍</div>
                                             <div className="text-lg font-medium mb-2">No purchase entries found</div>
@@ -697,7 +858,7 @@ export default function InventoryManagement() {
                             ) : (
                                 // Default empty state
                                 <tr>
-                                    <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                                    <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center">
                                             <div className="text-4xl mb-4">🔍</div>
                                             <div className="text-lg font-medium mb-2">No search criteria selected</div>
@@ -782,6 +943,73 @@ export default function InventoryManagement() {
                                     {isDeleting ? 'Deleting...' : 'Delete'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Delete Confirmation Modal */}
+            {bulkDeleteConfirmation.isOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-200">
+                            <div className="flex items-center">
+                                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900">Confirm Bulk Deletion</h3>
+                                    <p className="text-sm text-gray-600">This action cannot be undone.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <p className="text-gray-700 mb-4">
+                                Are you sure you want to delete <span className="font-medium text-red-600">{bulkDeleteConfirmation.items.length}</span> purchase {bulkDeleteConfirmation.items.length === 1 ? 'entry' : 'entries'}?
+                            </p>
+                            
+                            <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                                <p className="text-sm font-medium text-gray-700 mb-2">Items to be deleted:</p>
+                                <ul className="space-y-2">
+                                    {bulkDeleteConfirmation.items.map((item, index) => (
+                                        <li key={item.id} className="text-sm text-gray-600 flex items-start">
+                                            <span className="font-medium text-gray-700 mr-2">{index + 1}.</span>
+                                            <div>
+                                                <div className="font-medium text-gray-900">{item.medicine_name}</div>
+                                                <div className="text-xs text-gray-500">
+                                                    Supplier: {item.supplier_name} | Batch: {item.batch_number || 'N/A'} | Qty: {item.quantity}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p className="text-sm text-yellow-800">
+                                    <strong>Warning:</strong> This will also delete related records from inventory and transaction history.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+                            <button
+                                onClick={handleBulkDeleteCancel}
+                                disabled={isBulkDeleting}
+                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkDeleteConfirm}
+                                disabled={isBulkDeleting}
+                                className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+                            >
+                                {isBulkDeleting ? 'Deleting...' : `Delete ${bulkDeleteConfirmation.items.length} Item${bulkDeleteConfirmation.items.length > 1 ? 's' : ''}`}
+                            </button>
                         </div>
                     </div>
                 </div>

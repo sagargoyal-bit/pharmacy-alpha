@@ -5,10 +5,13 @@ import AutocompleteDropdown from '@/components/ui/AutocompleteDropdown'
 import { useAppDispatch, useAppSelector } from '@/lib/store'
 import { useCreatePurchaseMutation, useGetPurchasesQuery, useGetPurchasesStatsQuery } from '@/lib/store/api/pharmacyApi'
 import { addNotification, openModal, closeModal } from '@/lib/store/slices/uiSlice'
+import { supabase } from '@/lib/supabase'
 
 export default function PurchaseEntry() {
     const dispatch = useAppDispatch()
     const isModalOpen = useAppSelector((state) => state.ui.modals.purchaseEntry)
+    const [selectedPurchaseDetails, setSelectedPurchaseDetails] = useState<any>(null)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
 
     // RTK Query hooks
     const { data: purchases } = useGetPurchasesQuery({ page: 1, limit: 10 })
@@ -88,7 +91,7 @@ export default function PurchaseEntry() {
         try {
             // Transform form data to API format
             const purchaseData = {
-                supplier_name: formData.supplier_name,
+                supplier_name: formData.supplier_name.toUpperCase(),
                 invoice_number: formData.invoice_number,
                 date: formData.date,
                 items: formData.items.map(item => {
@@ -101,10 +104,10 @@ export default function PurchaseEntry() {
                     }
                     
                     return {
-                        medicine_name: item.item_name,
+                        medicine_name: item.item_name.toUpperCase(),
                         pack: item.pack || undefined,
                         quantity: parseInt(item.qty),
-                        weight: item.weight ? parseFloat(item.weight) : undefined,
+                        weight: item.weight || undefined,
                         expiry_date: expiryDate,
                         batch_number: item.batch || undefined,
                         mrp: item.mrp ? parseFloat(item.mrp) : undefined,
@@ -154,6 +157,36 @@ export default function PurchaseEntry() {
 
     const getTotalAmount = () => {
         return formData.items.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0).toFixed(2)
+    }
+
+    // Handle viewing purchase details
+    const handleViewPurchaseDetails = async (purchaseId: string) => {
+        try {
+            // Get auth token for the request
+            const { data: { session } } = await supabase.auth.getSession()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+            
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`
+            }
+            
+            // Fetch complete purchase details from the API
+            const response = await fetch(`/api/purchases?purchase_id=${purchaseId}`, { headers })
+            if (!response.ok) throw new Error('Failed to fetch purchase details')
+            
+            const data = await response.json()
+            setSelectedPurchaseDetails(data)
+            setIsDetailsModalOpen(true)
+        } catch (error) {
+            console.error('Error fetching purchase details:', error)
+            dispatch(addNotification({
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to load purchase details'
+            }))
+        }
     }
 
     // Helper function to get all focusable elements in the form
@@ -351,15 +384,18 @@ export default function PurchaseEntry() {
                                         <td className="px-4 py-2 text-sm text-gray-900">
                                             {purchase.medicine_name}
                                             {purchase.items_count > 1 && (
-                                                <span className="text-xs text-gray-500 ml-1">
+                                                <button
+                                                    onClick={() => handleViewPurchaseDetails(purchase.id)}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 ml-1 underline cursor-pointer"
+                                                >
                                                     (+{purchase.items_count - 1} more)
-                                                </span>
+                                                </button>
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-sm text-gray-900">{purchase.supplier}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">{purchase.quantity}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">
-                                            {purchase.weight ? `${purchase.weight} ml` : '-'}
+                                            {purchase.weight || '-'}
                                         </td>
                                         <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.rate.toFixed(2)}</td>
                                         <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.mrp.toFixed(2)}</td>
@@ -417,7 +453,7 @@ export default function PurchaseEntry() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Invoice Number 
-                                        <span className="text-xs text-gray-500 ml-1">(optional - auto-generated if empty)</span>
+                                     
                                     </label>
                                     <input
                                         type="text"
@@ -425,7 +461,7 @@ export default function PurchaseEntry() {
                                         onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
                                         onKeyDown={handleKeyDown}
                                         className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Leave empty for auto-generation"
+                                        placeholder="Invoice Number"
                                     />
                                 </div>
                                 <div>
@@ -459,22 +495,24 @@ export default function PurchaseEntry() {
                                     <table className="min-w-full">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pack</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Weight</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expiry</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">MRP</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">S.Rate</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                                                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">#</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Pack</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Weight</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Expiry</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Batch</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">MRP</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">S.Rate</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {formData.items.map((item, index) => (
-                                                <tr key={index}>
-                                                    <td className="px-3 py-2">
+                                                <tr key={index} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-50`}>
+                                                    <td className="px-3 py-3 text-center text-sm font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <AutocompleteDropdown
                                                             fieldType="medicine_name"
                                                             value={item.item_name}
@@ -487,7 +525,7 @@ export default function PurchaseEntry() {
                                                             onAfterSelect={handleAfterSelect}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="text"
                                                             value={item.pack}
@@ -497,7 +535,7 @@ export default function PurchaseEntry() {
                                                             placeholder="10x10"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="number"
                                                             required
@@ -508,18 +546,17 @@ export default function PurchaseEntry() {
                                                             placeholder="0"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
-                                                            type="number"
-                                                            step="0.01"
+                                                            type="text"
                                                             value={item.weight}
                                                             onChange={(e) => handleItemChange(index, 'weight', e.target.value)}
                                                             onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            placeholder="0.00"
+                                                            placeholder="100ml, 50gm"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="text"
                                                             required
@@ -532,7 +569,7 @@ export default function PurchaseEntry() {
                                                             maxLength={5}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="text"
                                                             value={item.batch}
@@ -542,7 +579,7 @@ export default function PurchaseEntry() {
                                                             placeholder="Batch no"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="number"
                                                             step="0.01"
@@ -553,7 +590,7 @@ export default function PurchaseEntry() {
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="number"
                                                             step="0.01"
@@ -565,7 +602,7 @@ export default function PurchaseEntry() {
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3 border-r border-gray-200">
                                                         <input
                                                             type="number"
                                                             step="0.01"
@@ -575,7 +612,7 @@ export default function PurchaseEntry() {
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2">
+                                                    <td className="px-3 py-3">
                                                         {formData.items.length > 1 && (
                                                             <button
                                                                 type="button"
@@ -622,6 +659,111 @@ export default function PurchaseEntry() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Purchase Details Modal */}
+            {isDetailsModalOpen && selectedPurchaseDetails && (
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                            <div>
+                                <h2 className="text-xl font-semibold text-gray-900">Purchase Details</h2>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Invoice: {selectedPurchaseDetails[0]?.invoice_number || 'N/A'} | 
+                                    Date: {selectedPurchaseDetails[0]?.purchase_date ? new Date(selectedPurchaseDetails[0].purchase_date).toLocaleDateString('en-IN') : 'N/A'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setIsDetailsModalOpen(false)
+                                    setSelectedPurchaseDetails(null)
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full border border-gray-200 rounded-lg">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">#</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Medicine Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Batch</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Qty</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Weight</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">MRP</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Rate</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedPurchaseDetails.map((item: any, index: number) => (
+                                            <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
+                                                <td className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200">{index + 1}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="font-medium">{item.medicine_name}</div>
+                                                    {item.generic_name && (
+                                                        <div className="text-xs text-gray-500">{item.generic_name}</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.batch_number || '-'}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.quantity}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.weight || '-'}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">₹{item.mrp?.toFixed(2) || '0.00'}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">₹{item.purchase_rate?.toFixed(2) || '0.00'}</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900 border-b border-gray-200">
+                                                    ₹{((item.quantity || 0) * (item.purchase_rate || 0)).toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-gray-50">
+                                        <tr>
+                                            <td colSpan={7} className="px-4 py-3 text-right text-sm font-semibold text-gray-900 border-t-2 border-gray-300">
+                                                Total:
+                                            </td>
+                                            <td className="px-4 py-3 text-sm font-bold text-gray-900 border-t-2 border-gray-300">
+                                                ₹{selectedPurchaseDetails[0]?.total_amount?.toLocaleString('en-IN') || '0.00'}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <span className="text-sm font-medium text-gray-600">Supplier:</span>
+                                    <span className="ml-2 text-sm text-gray-900">{selectedPurchaseDetails[0]?.supplier_name || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span className="text-sm font-medium text-gray-600">Total Items:</span>
+                                    <span className="ml-2 text-sm text-gray-900">{selectedPurchaseDetails.length}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={() => {
+                                    setIsDetailsModalOpen(false)
+                                    setSelectedPurchaseDetails(null)
+                                }}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
