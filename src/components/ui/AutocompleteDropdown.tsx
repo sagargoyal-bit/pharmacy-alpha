@@ -25,6 +25,7 @@ export interface AutocompleteDropdownProps {
     required?: boolean
     dropdownDirection?: 'bottom' | 'top' | 'auto'
     inTable?: boolean
+    onAfterSelect?: (inputElement: HTMLInputElement) => void
 }
 
 // Custom hook for debounced API calls
@@ -90,7 +91,6 @@ function useAutocompleteData(fieldType: FieldType, query: string) {
             }
             
             const response = await fetch(url, { headers })
-            console.log("response", response)
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -169,6 +169,20 @@ function transformDataToOptions(fieldType: FieldType, data: any[], searchQuery: 
     }
 }
 
+// Get modal title based on field type
+function getModalTitle(fieldType: FieldType): string {
+    switch (fieldType) {
+        case 'medicine_name':
+            return 'Select Medicine'
+        case 'supplier_name':
+            return 'Select Supplier'
+        case 'batch_number':
+            return 'Select Batch Number'
+        default:
+            return 'Select Option'
+    }
+}
+
 export default function AutocompleteDropdown({
     fieldType,
     value,
@@ -179,118 +193,86 @@ export default function AutocompleteDropdown({
     disabled = false,
     required = false,
     dropdownDirection: dropdownDirectionProp = 'auto',
-    inTable = false
+    inTable = false,
+    onAfterSelect
 }: AutocompleteDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
-    const [inputValue, setInputValue] = useState(value)
-    const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down')
-    const [absolutePosition, setAbsolutePosition] = useState({ top: 0, left: 0, width: 0 })
-    const [dropdownHeight, setDropdownHeight] = useState(0)
+    const [modalSearchValue, setModalSearchValue] = useState('')
 
     const inputRef = useRef<HTMLInputElement>(null)
-    const dropdownRef = useRef<HTMLDivElement>(null)
+    const modalRef = useRef<HTMLDivElement>(null)
+    const modalSearchRef = useRef<HTMLInputElement>(null)
     const optionRefs = useRef<(HTMLDivElement | null)[]>([])
+    const shouldIgnoreFocus = useRef(false)
 
-    // Debounce the input value for API calls
-    const debouncedInputValue = useDebounce(inputValue, 300)
+    // Debounce the modal search value for API calls
+    const debouncedSearchValue = useDebounce(modalSearchValue, 300)
 
     // Fetch autocomplete data
-    const { options, loading, error, fetchData } = useAutocompleteData(fieldType, debouncedInputValue)
+    const { options, loading, error, fetchData } = useAutocompleteData(fieldType, debouncedSearchValue)
 
-    // Update input value when prop value changes
+    // Fetch data when debounced search value changes
     useEffect(() => {
-        setInputValue(value)
-    }, [value])
+        if (isOpen && debouncedSearchValue.trim()) {
+            fetchData(debouncedSearchValue)
+        }
+    }, [debouncedSearchValue, isOpen, fetchData])
 
-    // Calculate dropdown position and direction
-    const calculateDropdownPositionAndDirection = (actualHeight: number = 240) => {
-        if (!inputRef.current) return { direction: 'down' as const, position: { top: 0, left: 0, width: 0 } }
-        
-        const rect = inputRef.current.getBoundingClientRect()
-        const viewportHeight = window.innerHeight
-        const spaceBelow = viewportHeight - rect.bottom
-        const spaceAbove = rect.top
-        
-        // Use actual height or estimate
-        const estimatedHeight = actualHeight || Math.min(240, (options.length * 40) + 20) // ~40px per option + padding
-        
-        // Determine direction
-        let direction: 'up' | 'down' = 'down'
-        
-        if (dropdownDirectionProp === 'top') {
-            direction = 'up'
-        } else if (dropdownDirectionProp === 'bottom') {
-            direction = 'down'
-        } else {
-            // Auto calculation based on actual space needed
-            if (inTable) {
-                direction = spaceAbove > estimatedHeight + 10 ? 'up' : 'down'
-            } else {
-                direction = spaceBelow < estimatedHeight + 10 && spaceAbove > spaceBelow ? 'up' : 'down'
-            }
+    // Handle input click - opens modal
+    const handleInputClick = () => {
+        if (!disabled && !shouldIgnoreFocus.current) {
+            setIsOpen(true)
+            setModalSearchValue(value)
+            setHighlightedIndex(-1)
         }
-        
-        // Calculate absolute position
-        const position = {
-            top: direction === 'up' ? rect.top - estimatedHeight - 4 : rect.bottom + 4,
-            left: rect.left,
-            width: rect.width
-        }
-        
-        return { direction, position }
+        shouldIgnoreFocus.current = false
     }
 
-    // Fetch data when debounced input changes
-    useEffect(() => {
-        if (isOpen && debouncedInputValue !== value && debouncedInputValue.trim()) {
-            fetchData(debouncedInputValue)
-        }
-    }, [debouncedInputValue, isOpen, fetchData, value])
-
-    // Handle input change
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value
-        setInputValue(newValue)
-        onChange(newValue)
-        
-        const { direction, position } = calculateDropdownPositionAndDirection(dropdownHeight)
-        setDropdownDirection(direction)
-        setAbsolutePosition(position)
-        setIsOpen(true)
+    // Handle modal close
+    const handleCloseModal = useCallback(() => {
+        setIsOpen(false)
+        setModalSearchValue('')
         setHighlightedIndex(-1)
-    }
-
-    // Handle input focus
-    const handleInputFocus = () => {
-        const { direction, position } = calculateDropdownPositionAndDirection(dropdownHeight)
-        setDropdownDirection(direction)
-        setAbsolutePosition(position)
-        setIsOpen(true)
-        if (inputValue && inputValue !== value && inputValue.trim()) {
-            fetchData(inputValue)
-        }
-    }
+        // Set flag to ignore next focus event
+        shouldIgnoreFocus.current = true
+        // Use setTimeout to ensure state updates before focusing
+        setTimeout(() => {
+            inputRef.current?.focus()
+        }, 0)
+    }, [])
 
     // Handle option selection
-    const handleOptionSelect = (option: AutocompleteOption) => {
-        setInputValue(option.value)
+    const handleOptionSelect = useCallback((option: AutocompleteOption) => {
         onChange(option.value)
         setIsOpen(false)
+        setModalSearchValue('')
         setHighlightedIndex(-1)
-        inputRef.current?.focus()
+        // Set flag to ignore next focus event
+        shouldIgnoreFocus.current = true
+        
+        // If onAfterSelect callback is provided, use it to handle post-selection behavior
+        if (onAfterSelect && inputRef.current) {
+            const currentInput = inputRef.current
+            setTimeout(() => {
+                onAfterSelect(currentInput)
+            }, 50) // Small delay to ensure modal is fully closed
+        } else {
+            // Default behavior: focus back on the input
+            setTimeout(() => {
+                inputRef.current?.focus()
+            }, 0)
+        }
+    }, [onChange, onAfterSelect])
+
+    // Handle modal search input change
+    const handleModalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setModalSearchValue(e.target.value)
+        setHighlightedIndex(-1)
     }
 
-    // Handle keyboard navigation
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (!isOpen) {
-            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                setIsOpen(true)
-                e.preventDefault()
-            }
-            return
-        }
-
+    // Handle keyboard navigation in modal
+    const handleModalKeyDown = (e: React.KeyboardEvent) => {
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
@@ -309,25 +291,47 @@ export default function AutocompleteDropdown({
             case 'Enter':
                 e.preventDefault()
                 if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+                    // Select the highlighted option
                     handleOptionSelect(options[highlightedIndex])
-                } else {
+                } else if (modalSearchValue.trim()) {
+                    // No option selected but user has typed something - accept it as new value
+                    onChange(modalSearchValue.trim())
                     setIsOpen(false)
+                    setModalSearchValue('')
+                    setHighlightedIndex(-1)
+                    shouldIgnoreFocus.current = true
+                    
+                    if (onAfterSelect && inputRef.current) {
+                        const currentInput = inputRef.current
+                        setTimeout(() => {
+                            onAfterSelect(currentInput)
+                        }, 50)
+                    } else {
+                        setTimeout(() => {
+                            inputRef.current?.focus()
+                        }, 0)
+                    }
                 }
                 break
 
             case 'Escape':
                 e.preventDefault()
-                setIsOpen(false)
-                setHighlightedIndex(-1)
-                inputRef.current?.blur()
+                handleCloseModal()
                 break
 
             case 'Tab':
-                setIsOpen(false)
-                setHighlightedIndex(-1)
+                e.preventDefault()
+                // Keep focus within modal
                 break
         }
     }
+
+    // Auto-focus modal search input when modal opens
+    useEffect(() => {
+        if (isOpen && modalSearchRef.current) {
+            modalSearchRef.current.focus()
+        }
+    }, [isOpen])
 
     // Scroll highlighted option into view
     useEffect(() => {
@@ -339,60 +343,8 @@ export default function AutocompleteDropdown({
         }
     }, [highlightedIndex])
 
-    // Measure dropdown height after it renders
-    useEffect(() => {
-        if (isOpen && dropdownRef.current) {
-            const height = dropdownRef.current.offsetHeight
-            setDropdownHeight(height)
-            
-            // Recalculate position with actual height
-            const { direction, position } = calculateDropdownPositionAndDirection(height)
-            setDropdownDirection(direction)
-            setAbsolutePosition(position)
-        }
-    }, [isOpen, options.length, loading, error])
-
-    // Update position on scroll/resize when dropdown is open
-    useEffect(() => {
-        if (!isOpen) return
-
-        const updatePosition = () => {
-            const { direction, position } = calculateDropdownPositionAndDirection(dropdownHeight)
-            setDropdownDirection(direction)
-            setAbsolutePosition(position)
-        }
-
-        const handleScroll = () => updatePosition()
-        const handleResize = () => updatePosition()
-
-        window.addEventListener('scroll', handleScroll, true)
-        window.addEventListener('resize', handleResize)
-
-        return () => {
-            window.removeEventListener('scroll', handleScroll, true)
-            window.removeEventListener('resize', handleResize)
-        }
-    }, [isOpen, dropdownHeight])
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target as Node) &&
-                !inputRef.current?.contains(event.target as Node)
-            ) {
-                setIsOpen(false)
-                setHighlightedIndex(-1)
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
     const baseInputClasses = "w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-    const inputClasses = `${baseInputClasses} ${className} ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}`
+    const inputClasses = `${baseInputClasses} ${className} ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer'}`
 
     return (
         <div className="relative">
@@ -407,95 +359,160 @@ export default function AutocompleteDropdown({
                 <input
                     ref={inputRef}
                     type="text"
-                    value={inputValue}
-                    onChange={handleInputChange}
-                    onFocus={handleInputFocus}
-                    onKeyDown={handleKeyDown}
+                    value={value}
+                    onClick={handleInputClick}
+                    onFocus={handleInputClick}
                     placeholder={placeholder}
                     disabled={disabled}
                     required={required}
                     className={inputClasses}
                     autoComplete="off"
+                    readOnly
                     role="combobox"
                     aria-expanded={isOpen}
-                    aria-haspopup="listbox"
+                    aria-haspopup="dialog"
                     aria-label={label || `${fieldType} input`}
                 />
 
-                {/* Loading indicator */}
-                {loading && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <svg className="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-                )}
-
                 {/* Dropdown arrow */}
-                {!loading && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <svg 
-                            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
-                )}
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <svg 
+                        className="h-4 w-4 text-gray-400" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
             </div>
 
-            {/* Portal Dropdown menu */}
+            {/* Modal */}
             {isOpen && typeof window !== 'undefined' && createPortal(
-                <div
-                    ref={dropdownRef}
-                    className="fixed bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto z-[99999]"
-                    style={{
-                        top: absolutePosition.top,
-                        left: absolutePosition.left,
-                        width: absolutePosition.width,
-                        maxHeight: 240
-                    }}
-                    role="listbox"
-                    aria-label={`${fieldType} options`}
+                <div 
+                    className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-[99999] p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-title"
                 >
-                    {loading && options.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                            Searching...
+                    <div
+                        ref={modalRef}
+                        className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[600px] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+                                {getModalTitle(fieldType)}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handleCloseModal()
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded"
+                                aria-label="Close modal"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                    )}
 
-                    {error && (
-                        <div className="px-3 py-2 text-sm text-red-500 text-center">
-                            {error}
+                        {/* Search Input */}
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="relative">
+                                <input
+                                    ref={modalSearchRef}
+                                    type="text"
+                                    value={modalSearchValue}
+                                    onChange={handleModalSearchChange}
+                                    onKeyDown={handleModalKeyDown}
+                                    placeholder={`Search ${fieldType.replace('_', ' ')}...`}
+                                    className="w-full px-4 py-3 pr-10 text-base text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    autoComplete="off"
+                                    autoFocus
+                                />
+                                
+                                {/* Loading indicator */}
+                                {loading && (
+                                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                        <svg className="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                )}
+
+                                {/* Search icon */}
+                                {!loading && (
+                                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    {!loading && !error && options.length === 0 && inputValue.trim() && (
-                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                            No results found. You can still use "{inputValue}" as a new entry.
-                        </div>
-                    )}
-
-                    {options.map((option, index) => (
-                        <div
-                            key={option.id}
-                            ref={el => { optionRefs.current[index] = el }}
-                            className={`px-3 py-2 text-sm cursor-pointer transition-colors duration-150 ${
-                                index === highlightedIndex
-                                    ? 'bg-blue-50 text-blue-900'
-                                    : 'text-gray-900 hover:bg-gray-50'
-                            }`}
-                            onClick={() => handleOptionSelect(option)}
-                            role="option"
-                            aria-selected={index === highlightedIndex}
-                            title={getTooltipText(fieldType, option)}
+                        {/* Results List */}
+                        <div 
+                            className="overflow-y-auto max-h-[480px] p-2"
+                            role="listbox"
+                            aria-label={`${fieldType} options`}
                         >
-                            <div className="truncate">{option.label}</div>
+                            {loading && options.length === 0 && (
+                                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                                    Searching...
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="px-4 py-8 text-sm text-red-500 text-center">
+                                    {error}
+                                </div>
+                            )}
+
+                            {!loading && !error && options.length === 0 && modalSearchValue.trim() && (
+                                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                                    No results found. You can still use "{modalSearchValue}" as a new entry.
+                                </div>
+                            )}
+
+                            {!loading && !error && options.length === 0 && !modalSearchValue.trim() && (
+                                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                                    Start typing to search...
+                                </div>
+                            )}
+
+                            {options.map((option, index) => (
+                                <div
+                                    key={option.id}
+                                    ref={el => { optionRefs.current[index] = el }}
+                                    className={`px-4 py-3 rounded-md cursor-pointer transition-colors duration-150 ${
+                                        index === highlightedIndex
+                                            ? 'bg-blue-50 text-blue-900'
+                                            : 'text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleOptionSelect(option)
+                                    }}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault()
+                                    }}
+                                    role="option"
+                                    aria-selected={index === highlightedIndex}
+                                    title={getTooltipText(fieldType, option)}
+                                >
+                                    <div className="truncate">{option.label}</div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    </div>
                 </div>,
                 document.body
             )}
