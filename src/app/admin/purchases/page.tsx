@@ -56,7 +56,21 @@ export default function PurchaseEntry() {
 
     const handleItemChange = (index: number, field: string, value: string) => {
         const newItems = [...formData.items]
-        newItems[index] = { ...newItems[index], [field]: value }
+        
+        // Format expiry date as MM/YY
+        if (field === 'expiry') {
+            // Remove any non-digit characters
+            let cleaned = value.replace(/\D/g, '')
+            
+            // Auto-add slash after 2 digits
+            if (cleaned.length >= 2) {
+                cleaned = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4)
+            }
+            
+            newItems[index] = { ...newItems[index], [field]: cleaned }
+        } else {
+            newItems[index] = { ...newItems[index], [field]: value }
+        }
 
         // Auto-calculate amount if qty and rate are provided
         if (field === 'qty' || field === 'rate') {
@@ -77,17 +91,27 @@ export default function PurchaseEntry() {
                 supplier_name: formData.supplier_name,
                 invoice_number: formData.invoice_number,
                 date: formData.date,
-                items: formData.items.map(item => ({
-                    medicine_name: item.item_name,
-                    pack: item.pack || undefined,
-                    quantity: parseInt(item.qty),
-                    weight: item.weight ? parseFloat(item.weight) : undefined,
-                    expiry_date: item.expiry,
-                    batch_number: item.batch || undefined,
-                    mrp: item.mrp ? parseFloat(item.mrp) : undefined,
-                    rate: parseFloat(item.rate),
-                    amount: parseFloat(item.amount)
-                }))
+                items: formData.items.map(item => {
+                    // Convert MM/YY to YYYY-MM format for expiry_date
+                    let expiryDate = item.expiry
+                    if (item.expiry && item.expiry.includes('/')) {
+                        const [month, year] = item.expiry.split('/')
+                        // Assume 20xx for years, convert to YYYY-MM format
+                        expiryDate = `20${year}-${month}`
+                    }
+                    
+                    return {
+                        medicine_name: item.item_name,
+                        pack: item.pack || undefined,
+                        quantity: parseInt(item.qty),
+                        weight: item.weight ? parseFloat(item.weight) : undefined,
+                        expiry_date: expiryDate,
+                        batch_number: item.batch || undefined,
+                        mrp: item.mrp ? parseFloat(item.mrp) : undefined,
+                        rate: parseFloat(item.rate),
+                        amount: parseFloat(item.amount)
+                    }
+                })
             }
 
             console.log('📤 Sending purchase data:', purchaseData)
@@ -130,6 +154,102 @@ export default function PurchaseEntry() {
 
     const getTotalAmount = () => {
         return formData.items.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0).toFixed(2)
+    }
+
+    // Helper function to get all focusable elements in the form
+    const getFocusableElements = (currentElement: HTMLElement) => {
+        const form = currentElement.closest('form')
+        if (!form) return []
+
+        // Get all input elements in the form (including readonly for AutocompleteDropdown)
+        // but exclude the Amount field which has both readonly and bg-gray-50
+        const allInputs = Array.from(
+            form.querySelectorAll<HTMLInputElement>(
+                'input:not([disabled]):not([tabindex="-1"])'
+            )
+        )
+        
+        // Filter out the Amount fields (they have readonly and bg-gray-50 class)
+        return allInputs.filter(input => {
+            const isAmountField = input.readOnly && input.classList.contains('bg-gray-50')
+            return !isAmountField
+        })
+    }
+
+    // Helper function to move focus to next input field
+    const moveToNextField = (currentElement: HTMLElement) => {
+        const focusableElements = getFocusableElements(currentElement)
+        const currentIndex = focusableElements.indexOf(currentElement as HTMLInputElement)
+        const nextElement = focusableElements[currentIndex + 1]
+
+        if (nextElement) {
+            nextElement.focus()
+            // If it's a readonly input (from AutocompleteDropdown), click it to open the modal
+            if (nextElement.readOnly) {
+                nextElement.click()
+            }
+        }
+    }
+
+    // Helper function to move focus to previous input field
+    const moveToPreviousField = (currentElement: HTMLElement) => {
+        const focusableElements = getFocusableElements(currentElement)
+        const currentIndex = focusableElements.indexOf(currentElement as HTMLInputElement)
+        const previousElement = focusableElements[currentIndex - 1]
+
+        if (previousElement) {
+            previousElement.focus()
+            // If it's a readonly input (from AutocompleteDropdown), click it to open the modal
+            if (previousElement.readOnly) {
+                previousElement.click()
+            }
+        }
+    }
+
+    // Handle keyboard navigation in form inputs
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const input = e.currentTarget
+        
+        // For input types that don't support selectionStart/End (number, date, month, etc.),
+        // we'll allow arrow key navigation without cursor position checks
+        const supportsSelection = input.type === 'text' || input.type === 'search' || 
+                                  input.type === 'tel' || input.type === 'url' || input.type === 'password'
+        
+        let cursorAtStart = true
+        let cursorAtEnd = true
+        
+        if (supportsSelection) {
+            // For text inputs, check cursor position
+            cursorAtStart = input.selectionStart === 0 && input.selectionEnd === 0
+            cursorAtEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length
+        }
+        // For non-text inputs (number, date, month), always allow navigation with arrow keys
+
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            moveToNextField(e.currentTarget)
+        } else if (e.key === 'ArrowRight') {
+            if (!supportsSelection || cursorAtEnd) {
+                // Move to next field if:
+                // - Input doesn't support cursor position (number, date, etc.), OR
+                // - Cursor is at the end of a text input
+                e.preventDefault()
+                moveToNextField(e.currentTarget)
+            }
+        } else if (e.key === 'ArrowLeft') {
+            if (!supportsSelection || cursorAtStart) {
+                // Move to previous field if:
+                // - Input doesn't support cursor position (number, date, etc.), OR
+                // - Cursor is at the start of a text input
+                e.preventDefault()
+                moveToPreviousField(e.currentTarget)
+            }
+        }
+    }
+
+    // Callback for AutocompleteDropdown after selection
+    const handleAfterSelect = (inputElement: HTMLInputElement) => {
+        moveToNextField(inputElement)
     }
 
     return (
@@ -263,7 +383,7 @@ export default function PurchaseEntry() {
 
             {/* Purchase Entry Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -291,6 +411,7 @@ export default function PurchaseEntry() {
                                         placeholder="Enter supplier name"
                                         required
                                         className="text-black"
+                                        onAfterSelect={handleAfterSelect}
                                     />
                                 </div>
                                 <div>
@@ -302,6 +423,7 @@ export default function PurchaseEntry() {
                                         type="text"
                                         value={formData.invoice_number}
                                         onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                                        onKeyDown={handleKeyDown}
                                         className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         placeholder="Leave empty for auto-generation"
                                     />
@@ -313,6 +435,7 @@ export default function PurchaseEntry() {
                                         required
                                         value={formData.date}
                                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        onKeyDown={handleKeyDown}
                                         className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
@@ -361,6 +484,7 @@ export default function PurchaseEntry() {
                                                             className="text-black px-2 py-1 text-sm"
                                                             inTable={true}
                                                             dropdownDirection="auto"
+                                                            onAfterSelect={handleAfterSelect}
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
@@ -368,6 +492,7 @@ export default function PurchaseEntry() {
                                                             type="text"
                                                             value={item.pack}
                                                             onChange={(e) => handleItemChange(index, 'pack', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="10x10"
                                                         />
@@ -378,6 +503,7 @@ export default function PurchaseEntry() {
                                                             required
                                                             value={item.qty}
                                                             onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0"
                                                         />
@@ -388,18 +514,22 @@ export default function PurchaseEntry() {
                                                             step="0.01"
                                                             value={item.weight}
                                                             onChange={(e) => handleItemChange(index, 'weight', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
                                                         <input
-                                                            type="month"
+                                                            type="text"
                                                             required
                                                             value={item.expiry}
                                                             onChange={(e) => handleItemChange(index, 'expiry', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            title="Expiry month (automatically converts to last day of month)"
+                                                            placeholder="MM/YY"
+                                                            title="Expiry date in MM/YY format (e.g., 01/25, 12/26)"
+                                                            maxLength={5}
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
@@ -407,6 +537,7 @@ export default function PurchaseEntry() {
                                                             type="text"
                                                             value={item.batch}
                                                             onChange={(e) => handleItemChange(index, 'batch', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="Batch no"
                                                         />
@@ -417,6 +548,7 @@ export default function PurchaseEntry() {
                                                             step="0.01"
                                                             value={item.mrp}
                                                             onChange={(e) => handleItemChange(index, 'mrp', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
@@ -428,6 +560,7 @@ export default function PurchaseEntry() {
                                                             required
                                                             value={item.rate}
                                                             onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
+                                                            onKeyDown={handleKeyDown}
                                                             className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
