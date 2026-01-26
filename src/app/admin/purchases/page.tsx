@@ -286,80 +286,81 @@ export default function PurchaseEntry() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Page Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Purchase Entry</h1>
-                    <p className="text-gray-600">Record daily medicine purchases from wholesalers</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Purchase Entry</h1>
+                    <p className="text-sm sm:text-base text-gray-600">Record daily medicine purchases from wholesalers</p>
                 </div>
                 <button
                     onClick={() => dispatch(openModal('purchaseEntry'))}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                 >
                     + Add Purchase
                 </button>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-gray-900">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900">
                         {statsLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-16 sm:w-20 rounded"></div>
                         ) : (
                             `₹${(purchasesStats?.todaysPurchases || 0).toLocaleString('en-IN')}`
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Today&apos;s Purchases</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Today&apos;s Purchases</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-green-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-green-600">
                         {statsLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-16 sm:w-20 rounded"></div>
                         ) : (
                             `₹${(purchasesStats?.thisMonth || 0).toLocaleString('en-IN')}`
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">This Month</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">This Month</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-blue-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-600">
                         {statsLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-12 sm:w-16 rounded"></div>
                         ) : (
                             purchasesStats?.totalEntries || 0
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Total Entries</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Total Entries</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-yellow-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-yellow-600">
                         {statsLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-12 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-10 sm:w-12 rounded"></div>
                         ) : (
                             purchasesStats?.differentSuppliers || 0
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Different Suppliers</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Different Suppliers</div>
                 </div>
             </div>
 
             {/* Recent Purchases */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Purchases (Last 10)</h3>
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Recent Purchases (Last 10)</h3>
+                <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6">
+                    <div className="inline-block min-w-full align-middle px-3 sm:px-4 md:px-6">
                     <table className="min-w-full table-auto">
                         <thead>
                             <tr className="bg-gray-50">
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Medicine Name</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Supplier</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Quantity</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Weight</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">S.Rate</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">MRP</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Purchase Date</th>
-                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Total</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Medicine Name</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Supplier</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Quantity</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Weight</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">S.Rate</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">MRP</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Purchase Date</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Total</th>
                             </tr>
                         </thead>
                         <tbody className="space-y-2">
@@ -367,91 +368,104 @@ export default function PurchaseEntry() {
                                 // Loading skeleton
                                 Array.from({ length: 3 }).map((_, index) => (
                                     <tr key={index} className="border-t border-gray-200">
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-32 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-20 rounded"></div></td>
-                                        <td className="px-4 py-2"><div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-24 sm:w-32 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-20 sm:w-24 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-12 sm:w-16 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-10 sm:w-12 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-10 sm:w-12 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-10 sm:w-12 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-16 sm:w-20 rounded"></div></td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2"><div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-12 sm:w-16 rounded"></div></td>
                                     </tr>
                                 ))
                             ) : purchasesStats?.recentPurchases && purchasesStats.recentPurchases.length > 0 ? (
                                 // Show only the last 10 purchases (API already limits to 10, but being explicit)
                                 purchasesStats.recentPurchases.slice(0, 10).map((purchase: any) => (
                                     <tr key={purchase.id} className="border-t border-gray-200 hover:bg-gray-50">
-                                        <td className="px-4 py-2 text-sm text-gray-900">
-                                            {purchase.medicine_name}
-                                            {purchase.items_count > 1 && (
-                                                <button
-                                                    onClick={() => handleViewPurchaseDetails(purchase.id)}
-                                                    className="text-xs text-blue-600 hover:text-blue-800 ml-1 underline cursor-pointer"
-                                                >
-                                                    (+{purchase.items_count - 1} more)
-                                                </button>
-                                            )}
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[120px]">
+                                                <span className="break-words">{purchase.medicine_name}</span>
+                                                {purchase.items_count > 1 && (
+                                                    <button
+                                                        onClick={() => handleViewPurchaseDetails(purchase.id)}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 ml-1 underline cursor-pointer"
+                                                    >
+                                                        (+{purchase.items_count - 1} more)
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">{purchase.supplier}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">{purchase.quantity}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">
-                                            {purchase.weight || '-'}
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[100px] truncate">{purchase.supplier}</div>
                                         </td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.rate.toFixed(2)}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.mrp.toFixed(2)}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">
-                                            {new Date(purchase.purchase_date).toLocaleDateString('en-IN')}
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[50px]">{purchase.quantity}</div>
                                         </td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">₹{purchase.total.toLocaleString('en-IN')}</td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[50px]">{purchase.weight || '-'}</div>
+                                        </td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[60px] whitespace-nowrap">₹{purchase.rate.toFixed(2)}</div>
+                                        </td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[60px] whitespace-nowrap">₹{purchase.mrp.toFixed(2)}</div>
+                                        </td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[80px] whitespace-nowrap">{new Date(purchase.purchase_date).toLocaleDateString('en-IN')}</div>
+                                        </td>
+                                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
+                                            <div className="min-w-[70px] whitespace-nowrap">₹{purchase.total.toLocaleString('en-IN')}</div>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr className="border-t border-gray-200">
-                                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={8} className="px-3 sm:px-4 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-500">
                                         No recent purchases found
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
             {/* Purchase Entry Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">Add Purchase Entry</h2>
+                        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Add Purchase Entry</h2>
                             <button
                                 onClick={() => dispatch(closeModal('purchaseEntry'))}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
                             >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
                         {/* Modal Content */}
-                        <form onSubmit={handleSubmit} className="p-6">
+                        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
                             {/* Supplier & Invoice Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Supplier Name *</label>
+                                    <label className="block text-xs sm:text-sm font-bold text-black mb-1">Supplier Name *</label>
                                     <AutocompleteDropdown
                                         fieldType="supplier_name"
                                         value={formData.supplier_name}
                                         onChange={(value) => setFormData({ ...formData, supplier_name: value })}
                                         placeholder="Enter supplier name"
                                         required
-                                        className="text-black"
+                                        className="text-black text-sm"
                                         onAfterSelect={handleAfterSelect}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs sm:text-sm font-bold text-black mb-1">
                                         Invoice Number 
                                      
                                     </label>
@@ -460,137 +474,138 @@ export default function PurchaseEntry() {
                                         value={formData.invoice_number}
                                         onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
                                         onKeyDown={handleKeyDown}
-                                        className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full text-black px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         placeholder="Invoice Number"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date *</label>
+                                <div className="sm:col-span-2 lg:col-span-1">
+                                    <label className="block text-xs sm:text-sm font-bold text-black mb-1">Purchase Date *</label>
                                     <input
                                         type="date"
                                         required
                                         value={formData.date}
                                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                         onKeyDown={handleKeyDown}
-                                        className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full text-black px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
                             </div>
 
                             {/* Items Section */}
-                            <div className="mb-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-medium text-gray-900">Medicine Items</h3>
+                            <div className="mb-4 sm:mb-6">
+                                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                    <h3 className="text-base sm:text-lg font-bold text-black">Medicine Items</h3>
                                     <button
                                         type="button"
                                         onClick={handleAddItem}
-                                        className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-green-600 text-white text-xs sm:text-sm rounded-md hover:bg-green-700 transition-colors whitespace-nowrap"
                                     >
                                         + Add Item
                                     </button>
                                 </div>
 
                                 {/* Items Table */}
-                                <div className="overflow-x-auto overflow-y-visible border border-gray-200 rounded-lg">
+                                <div className="overflow-x-auto overflow-y-visible border border-gray-200 rounded-lg -mx-4 sm:mx-0">
+                                    <div className="inline-block min-w-full align-middle px-4 sm:px-0">
                                     <table className="min-w-full">
-                                        <thead className="bg-gray-50">
+                                        <thead className="bg-gray-50 border-b border-gray-400">
                                             <tr>
-                                                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">#</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Pack</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Qty</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Weight</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Expiry</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Batch</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">MRP</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">S.Rate</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Action</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">#</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Item Name</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Pack</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Qty</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Weight</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Expiry</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Batch</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">MRP</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">S.Rate</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Amount</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
+                                        <tbody className="bg-white divide-y divide-gray-400">
                                             {formData.items.map((item, index) => (
                                                 <tr key={index} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-50`}>
-                                                    <td className="px-3 py-3 text-center text-sm font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-700 border-r border-gray-400">{index + 1}</td>
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <AutocompleteDropdown
                                                             fieldType="medicine_name"
                                                             value={item.item_name}
                                                             onChange={(value) => handleItemChange(index, 'item_name', value)}
                                                             placeholder="Medicine name"
                                                             required
-                                                            className="text-black px-2 py-1 text-sm"
+                                                            className="text-black px-1.5 sm:px-2 py-1 text-xs sm:text-sm min-w-[120px]"
                                                             inTable={true}
                                                             dropdownDirection="auto"
                                                             onAfterSelect={handleAfterSelect}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="text"
                                                             value={item.pack}
                                                             onChange={(e) => handleItemChange(index, 'pack', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="10x10"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="number"
                                                             required
                                                             value={item.qty}
                                                             onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[50px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="text"
                                                             value={item.weight}
                                                             onChange={(e) => handleItemChange(index, 'weight', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            placeholder="100ml, 50gm"
+                                                            className="w-full min-w-[70px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            placeholder="100ml"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="text"
                                                             required
                                                             value={item.expiry}
                                                             onChange={(e) => handleItemChange(index, 'expiry', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="MM/YY"
                                                             title="Expiry date in MM/YY format (e.g., 01/25, 12/26)"
                                                             maxLength={5}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="text"
                                                             value={item.batch}
                                                             onChange={(e) => handleItemChange(index, 'batch', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            placeholder="Batch no"
+                                                            className="w-full min-w-[70px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            placeholder="Batch"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="number"
                                                             step="0.01"
                                                             value={item.mrp}
                                                             onChange={(e) => handleItemChange(index, 'mrp', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="number"
                                                             step="0.01"
@@ -598,28 +613,28 @@ export default function PurchaseEntry() {
                                                             value={item.rate}
                                                             onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 border-r border-gray-200">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="number"
                                                             step="0.01"
                                                             value={item.amount}
                                                             readOnly
-                                                            className="w-full text-black px-2 py-1 border border-gray-300 rounded text-sm bg-gray-50"
+                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm bg-gray-50"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3">
+                                                    <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3">
                                                         {formData.items.length > 1 && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleRemoveItem(index)}
                                                                 className="text-red-600 hover:text-red-800 transition-colors"
                                                             >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                                 </svg>
                                                             </button>
@@ -629,12 +644,13 @@ export default function PurchaseEntry() {
                                             ))}
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
 
                                 {/* Total Amount */}
-                                <div className="mt-4 flex justify-end">
-                                    <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                                        <span className="text-sm font-medium text-blue-800">
+                                <div className="mt-3 sm:mt-4 flex justify-end">
+                                    <div className="bg-blue-50 px-3 sm:px-4 py-2 rounded-lg">
+                                        <span className="text-xs sm:text-sm font-medium text-blue-800">
                                             Total Amount: ₹{getTotalAmount()}
                                         </span>
                                     </div>
@@ -642,18 +658,18 @@ export default function PurchaseEntry() {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
                                 <button
                                     type="button"
                                     onClick={() => dispatch(closeModal('purchaseEntry'))}
-                                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                    className="w-full sm:w-auto px-4 py-2 text-sm sm:text-base text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors order-2 sm:order-1"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isCreating}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    className="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 order-1 sm:order-2"
                                 >
                                     {isCreating ? 'Saving...' : 'Save Purchase'}
                                 </button>
@@ -665,13 +681,13 @@ export default function PurchaseEntry() {
 
             {/* Purchase Details Modal */}
             {isDetailsModalOpen && selectedPurchaseDetails && (
-                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-900">Purchase Details</h2>
-                                <p className="text-sm text-gray-600 mt-1">
+                        <div className="flex items-start sm:items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                            <div className="flex-1 min-w-0 mr-2">
+                                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Purchase Details</h2>
+                                <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
                                     Invoice: {selectedPurchaseDetails[0]?.invoice_number || 'N/A'} | 
                                     Date: {selectedPurchaseDetails[0]?.purchase_date ? new Date(selectedPurchaseDetails[0].purchase_date).toLocaleDateString('en-IN') : 'N/A'}
                                 </p>
@@ -681,85 +697,97 @@ export default function PurchaseEntry() {
                                     setIsDetailsModalOpen(false)
                                     setSelectedPurchaseDetails(null)
                                 }}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                             >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
                         {/* Modal Content */}
-                        <div className="p-6">
-                            <div className="overflow-x-auto">
+                        <div className="p-4 sm:p-6">
+                            <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                                <div className="inline-block min-w-full align-middle px-4 sm:px-6">
                                 <table className="min-w-full border border-gray-200 rounded-lg">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">#</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Medicine Name</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Batch</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Qty</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Weight</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">MRP</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Rate</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">Amount</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">#</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Medicine Name</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Batch</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Qty</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Weight</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">MRP</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Rate</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedPurchaseDetails.map((item: any, index: number) => (
                                             <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
-                                                <td className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200">{index + 1}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">
-                                                    <div className="font-medium">{item.medicine_name}</div>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 border-b border-gray-200">{index + 1}</td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="font-medium min-w-[120px] break-words">{item.medicine_name}</div>
                                                     {item.generic_name && (
-                                                        <div className="text-xs text-gray-500">{item.generic_name}</div>
+                                                        <div className="text-xs text-gray-500 break-words">{item.generic_name}</div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.batch_number || '-'}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.quantity}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">{item.weight || '-'}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">₹{item.mrp?.toFixed(2) || '0.00'}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">₹{item.purchase_rate?.toFixed(2) || '0.00'}</td>
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-900 border-b border-gray-200">
-                                                    ₹{((item.quantity || 0) * (item.purchase_rate || 0)).toFixed(2)}
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[60px] truncate">{item.batch_number || '-'}</div>
+                                                </td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[40px]">{item.quantity}</div>
+                                                </td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[50px]">{item.weight || '-'}</div>
+                                                </td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[60px] whitespace-nowrap">₹{item.mrp?.toFixed(2) || '0.00'}</div>
+                                                </td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[60px] whitespace-nowrap">₹{item.purchase_rate?.toFixed(2) || '0.00'}</div>
+                                                </td>
+                                                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 border-b border-gray-200">
+                                                    <div className="min-w-[70px] whitespace-nowrap">₹{((item.quantity || 0) * (item.purchase_rate || 0)).toFixed(2)}</div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                     <tfoot className="bg-gray-50">
                                         <tr>
-                                            <td colSpan={7} className="px-4 py-3 text-right text-sm font-semibold text-gray-900 border-t-2 border-gray-300">
+                                            <td colSpan={7} className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-gray-900 border-t-2 border-gray-300">
                                                 Total:
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-bold text-gray-900 border-t-2 border-gray-300">
+                                            <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold text-gray-900 border-t-2 border-gray-300 whitespace-nowrap">
                                                 ₹{selectedPurchaseDetails[0]?.total_amount?.toLocaleString('en-IN') || '0.00'}
                                             </td>
                                         </tr>
                                     </tfoot>
                                 </table>
+                                </div>
                             </div>
 
                             {/* Additional Info */}
-                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
                                 <div>
-                                    <span className="text-sm font-medium text-gray-600">Supplier:</span>
-                                    <span className="ml-2 text-sm text-gray-900">{selectedPurchaseDetails[0]?.supplier_name || 'N/A'}</span>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600">Supplier:</span>
+                                    <span className="ml-2 text-xs sm:text-sm text-gray-900 break-words">{selectedPurchaseDetails[0]?.supplier_name || 'N/A'}</span>
                                 </div>
                                 <div>
-                                    <span className="text-sm font-medium text-gray-600">Total Items:</span>
-                                    <span className="ml-2 text-sm text-gray-900">{selectedPurchaseDetails.length}</span>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600">Total Items:</span>
+                                    <span className="ml-2 text-xs sm:text-sm text-gray-900">{selectedPurchaseDetails.length}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
+                        <div className="flex items-center justify-end p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
                             <button
                                 onClick={() => {
                                     setIsDetailsModalOpen(false)
                                     setSelectedPurchaseDetails(null)
                                 }}
-                                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                                className="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                             >
                                 Close
                             </button>
