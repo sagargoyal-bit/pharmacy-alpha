@@ -387,56 +387,56 @@ export default function ExpiryTracking() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Expiry Tracking</h1>
-                    <p className="text-gray-600">Monitor medicine expiry dates and manage expired stock</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Expiry Tracking</h1>
+                    <p className="text-sm sm:text-base text-gray-600">Monitor medicine expiry dates and manage expired stock</p>
                 </div>
             </div>
 
             {/* Expiry Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-red-600">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-red-600">
                         {isLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-6 sm:w-8 rounded"></div>
                         ) : (
                             expiryStats?.expiredThisWeek || 0
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Expired This Week</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Expired This Week</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-orange-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-orange-600">
                         {isLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-6 sm:w-8 rounded"></div>
                         ) : (
                             expiryStats?.expiringIn30Days || 0
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Expiring in 30 Days</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Expiring in 30 Days</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-yellow-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-yellow-600">
                         {isLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-6 sm:w-8 rounded"></div>
                         ) : (
                             expiryStats?.expiringIn90Days || 0
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">Expiring in 90 Days</div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">Expiring in 90 Days</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-blue-600">
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-600">
                         {alertsLoading ? (
-                            <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+                            <div className="animate-pulse bg-gray-200 h-6 sm:h-8 w-12 sm:w-16 rounded"></div>
                         ) : (
                             `₹${totalValueAtRisk.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1">
                         Value at Risk
                         {totalResults > 0 && (
                             <div className="text-xs text-gray-500 mt-1">
@@ -448,9 +448,9 @@ export default function ExpiryTracking() {
             </div>
 
             {/* Filter Section */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Expiry Alerts</h3>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Filter Expiry Alerts</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
                     <div>
                         <AutocompleteDropdown
                             fieldType="medicine_name"
@@ -479,50 +479,50 @@ export default function ExpiryTracking() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">From Date</label>
                         <input
                             type="date"
                             value={filters.start_date}
                             onChange={(e) => handleFilterChange('start_date', e.target.value)}
-                            className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">To Date</label>
                         <input
                             type="date"
                             value={filters.end_date}
                             onChange={(e) => handleFilterChange('end_date', e.target.value)}
-                            className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                 </div>
-                <div className="mt-4 flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
+                <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="text-xs sm:text-sm text-gray-600 order-2 sm:order-1">
                         {alertsLoading ? 'Searching...' : `Found ${expiryAlerts.length} results`}
                         {!hasSpecificFilters && (
-                            <span className="ml-2 text-blue-600">
+                            <span className="block sm:inline sm:ml-2 text-blue-600 text-xs sm:text-sm">
                                 • Showing next 90 days
                             </span>
                         )}
                         {hasSpecificFilters && (
-                            <span className="ml-2 text-green-600">
+                            <span className="block sm:inline sm:ml-2 text-green-600 text-xs sm:text-sm">
                                 • Searching entire database
                             </span>
                         )}
                         {(appliedFilters.start_date || appliedFilters.end_date) && (
-                            <span className="ml-2 text-purple-600">
+                            <span className="block sm:inline sm:ml-2 text-purple-600 text-xs sm:text-sm">
                                 • Custom date range
                             </span>
                         )}
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto order-1 sm:order-2">
                         <button
                             onClick={handleSubmitFilters}
-                            className="group relative px-2 py-1 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg font-medium shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-200"
+                            className="group relative px-3 sm:px-4 py-2 text-xs sm:text-sm text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg font-medium shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-200"
                         >
-                            <span className="relative flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="relative flex items-center justify-center gap-2">
+                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
                                 </svg>
                                 Apply Filters
@@ -530,10 +530,10 @@ export default function ExpiryTracking() {
                         </button>
                         <button
                             onClick={clearFilters}
-                            className="group relative px-2 py-1 text-gray-700 bg-white border-2 border-gray-200 rounded-lg font-medium shadow-md hover:shadow-lg hover:border-red-300 hover:text-red-600 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-100"
+                            className="group relative px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 bg-white border-2 border-gray-200 rounded-lg font-medium shadow-md hover:shadow-lg hover:border-red-300 hover:text-red-600 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-100"
                         >
-                            <span className="relative flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="relative flex items-center justify-center gap-2">
+                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                                 Clear Filters
@@ -544,17 +544,17 @@ export default function ExpiryTracking() {
             </div>
 
             {/* Expiry Table */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">All Expiry Alerts</h3>
-                    <div className="flex items-center gap-3">
-                        <div className="text-sm text-gray-600">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 sm:mb-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">All Expiry Alerts</h3>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div className="text-xs sm:text-sm text-gray-600">
                             {!alertsLoading && totalResults > 0 && (
-                                <span className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-full font-medium shadow-sm">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span className="inline-flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-700 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium shadow-sm text-xs sm:text-sm">
+                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    {totalResults} total result{totalResults !== 1 ? 's' : ''}
+                                    <span className="whitespace-nowrap">{totalResults} total result{totalResults !== 1 ? 's' : ''}</span>
                                 </span>
                             )}
                         </div>
@@ -562,27 +562,29 @@ export default function ExpiryTracking() {
                             <button
                                 onClick={downloadExpiryDataAsPDF}
                                 disabled={isDownloading}
-                                className={`group relative px-4 py-2 rounded-lg font-medium shadow-lg transform transition-all duration-200 focus:outline-none focus:ring-4 ${
+                                className={`group relative px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg transform transition-all duration-200 focus:outline-none focus:ring-4 ${
                                     isDownloading
                                         ? 'bg-gray-400 text-white cursor-not-allowed'
                                         : 'text-white bg-sky-500 hover:shadow-xl hover:-translate-y-0.5 focus:ring-purple-200'
                                 }`}
                             >
-                                <span className="relative flex items-center gap-2">
+                                <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap">
                                     {isDownloading ? (
                                         <>
-                                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                            <svg className="animate-spin w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Generating PDF...
+                                            <span className="hidden sm:inline">Generating PDF...</span>
+                                            <span className="sm:hidden">Generating...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
-                                            Download PDF
+                                            <span className="hidden sm:inline">Download PDF</span>
+                                            <span className="sm:hidden">PDF</span>
                                         </>
                                     )}
                                 </span>
@@ -590,32 +592,33 @@ export default function ExpiryTracking() {
                         )}
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6">
+                    <div className="inline-block min-w-full align-middle px-3 sm:px-4 md:px-6">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Medicine Name
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Supplier Name
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Batch Number
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Quantity
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Expiry Date
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     Days to Expiry
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                    S.Rate
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-2 sm:px-4 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                     MRP
                                 </th>
                             </tr>
@@ -625,29 +628,29 @@ export default function ExpiryTracking() {
                                 // Loading skeleton
                                 Array.from({ length: 3 }).map((_, index) => (
                                     <tr key={index}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            <div className="animate-pulse bg-gray-200 h-4 w-32 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                            <div className="animate-pulse bg-gray-200 h-3 sm:h-4 w-24 sm:w-32 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-24 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-20 sm:w-24 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-24 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-20 sm:w-24 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-12 sm:w-16 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-12 sm:w-16 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-12 sm:w-16 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-12 sm:w-16 rounded"></div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+                                        <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <div className="animate-pulse bg-gray-200 h-3 w-12 sm:w-16 rounded"></div>
                                         </td>
                                     </tr>
                                 ))
@@ -657,92 +660,96 @@ export default function ExpiryTracking() {
 
                                     return (
                                         <tr key={index}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {item.medicine_name}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                                <div className="min-w-[100px] sm:min-w-[120px] truncate">{item.medicine_name}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {item.supplier_name || '-'}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[80px] sm:min-w-[100px] truncate">{item.supplier_name || '-'}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {item.batch_number || '-'}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[70px] sm:min-w-[80px] truncate">{item.batch_number || '-'}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {item.quantity} units
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[60px]">{item.quantity} units</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {new Date(item.expiry_date).toLocaleDateString()}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[70px]">{new Date(item.expiry_date).toLocaleDateString()}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {daysToExpiry < 0
-                                                    ? `Expired ${Math.abs(daysToExpiry)} days ago`
-                                                    : daysToExpiry === 0
-                                                        ? 'Expires today'
-                                                        : `Expires in ${daysToExpiry} days`
-                                                }
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[100px] sm:min-w-[120px]">
+                                                    {daysToExpiry < 0
+                                                        ? `Expired ${Math.abs(daysToExpiry)} days ago`
+                                                        : daysToExpiry === 0
+                                                            ? 'Expires today'
+                                                            : `Expires in ${daysToExpiry} days`
+                                                    }
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                ₹{item.quantity > 0 ? (item.estimated_loss / item.quantity).toFixed(2) : '0.00'}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[60px]">₹{item.quantity > 0 ? (item.estimated_loss / item.quantity).toFixed(2) : '0.00'}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                ₹{item.mrp?.toFixed(2) || '0.00'}
+                                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                                <div className="min-w-[60px]">₹{item.mrp?.toFixed(2) || '0.00'}</div>
                                             </td>
                                         </tr>
                                     )
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                                    <td colSpan={8} className="px-3 sm:px-4 md:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-500">
                                         No expiry alerts found.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 {/* Pagination Controls */}
                 {(expiryAlerts.length > 0 || currentPage > 1) && (
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
-                        <div className="text-sm text-gray-700">
-                            Showing page {currentPage} of {totalPages}
-                            <span className="text-gray-500">
+                    <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-gray-200 pt-3 sm:pt-4">
+                        <div className="text-xs sm:text-sm text-gray-700 order-2 sm:order-1">
+                            <span className="block sm:inline">Showing page {currentPage} of {totalPages}</span>
+                            <span className="text-gray-500 block sm:inline">
                                 {expiryAlerts.length > 0 && (
                                     ` (${((currentPage - 1) * itemsPerPage) + 1}-${((currentPage - 1) * itemsPerPage) + expiryAlerts.length} of ${totalResults} items)`
                                 )}
                             </span>
                         </div>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto order-1 sm:order-2">
                             <button
                                 onClick={handlePreviousPage}
                                 disabled={!hasPreviousPage}
-                                className={`group relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${hasPreviousPage
+                                className={`flex-1 sm:flex-none group relative px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${hasPreviousPage
                                     ? 'text-gray-700 bg-white border border-gray-300 shadow-md hover:shadow-lg hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 hover:border-blue-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-100'
                                     : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed opacity-60'
                                     }`}
                             >
-                                <span className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span className="flex items-center justify-center gap-1">
+                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                     </svg>
-                                    Previous
+                                    <span className="hidden sm:inline">Previous</span>
+                                    <span className="sm:hidden">Prev</span>
                                 </span>
                             </button>
 
-                            <div className="px-4 py-2 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg">
+                            <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg whitespace-nowrap">
                                 Page {currentPage}
                             </div>
 
                             <button
                                 onClick={handleNextPage}
                                 disabled={!hasNextPage}
-                                className={`group relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${hasNextPage
+                                className={`flex-1 sm:flex-none group relative px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${hasNextPage
                                     ? 'text-gray-700 bg-white border border-gray-300 shadow-md hover:shadow-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-gray-50 hover:border-blue-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-100'
                                     : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed opacity-60'
                                     }`}
                             >
-                                <span className="flex items-center gap-1">
+                                <span className="flex items-center justify-center gap-1">
                                     Next
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                 </span>
