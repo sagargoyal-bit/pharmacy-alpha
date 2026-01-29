@@ -26,7 +26,7 @@ export default function PurchaseEntry() {
             item_name: '',
             pack: '',
             qty: '',
-            weight: '',
+            Free: '',
             expiry: '',
             batch: '',
             mrp: '',
@@ -42,7 +42,7 @@ export default function PurchaseEntry() {
                 item_name: '',
                 pack: '',
                 qty: '',
-                weight: '',
+                Free: '',
                 expiry: '',
                 batch: '',
                 mrp: '',
@@ -107,7 +107,7 @@ export default function PurchaseEntry() {
                         medicine_name: item.item_name.toUpperCase(),
                         pack: item.pack || undefined,
                         quantity: parseInt(item.qty),
-                        weight: item.weight || undefined,
+                        Free: item.Free || undefined,
                         expiry_date: expiryDate,
                         batch_number: item.batch || undefined,
                         mrp: item.mrp ? parseFloat(item.mrp) : undefined,
@@ -138,7 +138,7 @@ export default function PurchaseEntry() {
                     item_name: '',
                     pack: '',
                     qty: '',
-                    weight: '',
+                    Free: '',
                     expiry: '',
                     batch: '',
                     mrp: '',
@@ -260,6 +260,38 @@ export default function PurchaseEntry() {
 
         if (e.key === 'Enter') {
             e.preventDefault()
+            
+            // Check if we're in the rate field (S.Rate) by checking the data-field attribute
+            const isRateField = input.getAttribute('data-field') === 'rate'
+            
+            if (isRateField) {
+                // Find which row index this input belongs to by looking at the table structure
+                const tableRow = input.closest('tr')
+                if (tableRow) {
+                    const tbody = tableRow.parentElement
+                    const rowIndex = Array.from(tbody?.children || []).indexOf(tableRow)
+                    
+                    // If this is the last row, add a new item
+                    if (rowIndex === formData.items.length - 1) {
+                        handleAddItem()
+                        
+                        // Focus on the first field of the new row after a short delay
+                        setTimeout(() => {
+                            const newRowInputs = document.querySelectorAll('tbody tr:last-child input, tbody tr:last-child [role="textbox"]')
+                            if (newRowInputs.length > 0) {
+                                const firstInput = newRowInputs[0] as HTMLElement
+                                firstInput.focus()
+                                // If it's a readonly input (from AutocompleteDropdown), click it to open the modal
+                                if ((firstInput as HTMLInputElement).readOnly) {
+                                    firstInput.click()
+                                }
+                            }
+                        }, 50)
+                        return
+                    }
+                }
+            }
+            
             moveToNextField(e.currentTarget)
         } else if (e.key === 'ArrowRight') {
             if (!supportsSelection || cursorAtEnd) {
@@ -356,7 +388,7 @@ export default function PurchaseEntry() {
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Medicine Name</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Supplier</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Quantity</th>
-                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Weight</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Free</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">S.Rate</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">MRP</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Purchase Date</th>
@@ -402,7 +434,7 @@ export default function PurchaseEntry() {
                                             <div className="min-w-[50px]">{purchase.quantity}</div>
                                         </td>
                                         <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
-                                            <div className="min-w-[50px]">{purchase.weight || '-'}</div>
+                                            <div className="min-w-[50px]">{purchase.Free || '-'}</div>
                                         </td>
                                         <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-gray-900">
                                             <div className="min-w-[60px] whitespace-nowrap">₹{purchase.rate.toFixed(2)}</div>
@@ -493,15 +525,8 @@ export default function PurchaseEntry() {
 
                             {/* Items Section */}
                             <div className="mb-4 sm:mb-6">
-                                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                <div className="mb-3 sm:mb-4">
                                     <h3 className="text-base sm:text-lg font-bold text-black">Medicine Items</h3>
-                                    <button
-                                        type="button"
-                                        onClick={handleAddItem}
-                                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-green-600 text-white text-xs sm:text-sm rounded-md hover:bg-green-700 transition-colors whitespace-nowrap"
-                                    >
-                                        + Add Item
-                                    </button>
                                 </div>
 
                                 {/* Items Table */}
@@ -514,7 +539,7 @@ export default function PurchaseEntry() {
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Item Name</th>
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Pack</th>
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Qty</th>
-                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Weight</th>
+                                                <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Free</th>
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Expiry</th>
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">Batch</th>
                                                 <th className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-900 uppercase whitespace-nowrap">MRP</th>
@@ -534,10 +559,11 @@ export default function PurchaseEntry() {
                                                             onChange={(value) => handleItemChange(index, 'item_name', value)}
                                                             placeholder="Medicine name"
                                                             required
-                                                            className="text-black px-1.5 sm:px-2 py-1 text-xs sm:text-sm min-w-[120px]"
+                                                            className="text-black font-semibold px-1.5 sm:px-2 py-1 text-xs sm:text-sm min-w-[150px]"
                                                             inTable={true}
                                                             dropdownDirection="auto"
                                                             onAfterSelect={handleAfterSelect}
+                                                            showSearchIcon={false}
                                                         />
                                                     </td>
                                                     <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
@@ -546,7 +572,7 @@ export default function PurchaseEntry() {
                                                             value={item.pack}
                                                             onChange={(e) => handleItemChange(index, 'pack', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="10x10"
                                                         />
                                                     </td>
@@ -557,18 +583,18 @@ export default function PurchaseEntry() {
                                                             value={item.qty}
                                                             onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[50px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[50px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0"
                                                         />
                                                     </td>
                                                     <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
                                                         <input
                                                             type="text"
-                                                            value={item.weight}
-                                                            onChange={(e) => handleItemChange(index, 'weight', e.target.value)}
+                                                            value={item.Free}
+                                                            onChange={(e) => handleItemChange(index, 'Free', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[70px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            placeholder="100ml"
+                                                            className="w-full min-w-[70px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            placeholder="100"
                                                         />
                                                     </td>
                                                     <td className="px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 border-r border-gray-400">
@@ -578,7 +604,7 @@ export default function PurchaseEntry() {
                                                             value={item.expiry}
                                                             onChange={(e) => handleItemChange(index, 'expiry', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="MM/YY"
                                                             title="Expiry date in MM/YY format (e.g., 01/25, 12/26)"
                                                             maxLength={5}
@@ -590,7 +616,7 @@ export default function PurchaseEntry() {
                                                             value={item.batch}
                                                             onChange={(e) => handleItemChange(index, 'batch', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[70px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[150px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="Batch"
                                                         />
                                                     </td>
@@ -601,7 +627,7 @@ export default function PurchaseEntry() {
                                                             value={item.mrp}
                                                             onChange={(e) => handleItemChange(index, 'mrp', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            className="w-full min-w-[60px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
@@ -613,7 +639,8 @@ export default function PurchaseEntry() {
                                                             value={item.rate}
                                                             onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
                                                             onKeyDown={handleKeyDown}
-                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            data-field="rate"
+                                                            className="w-full min-w-[60px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
@@ -623,7 +650,7 @@ export default function PurchaseEntry() {
                                                             step="0.01"
                                                             value={item.amount}
                                                             readOnly
-                                                            className="w-full min-w-[60px] text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm bg-gray-50"
+                                                            className="w-full min-w-[60px] font-semibold text-black px-1.5 sm:px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm bg-gray-50"
                                                             placeholder="0.00"
                                                         />
                                                     </td>
@@ -716,7 +743,7 @@ export default function PurchaseEntry() {
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Medicine Name</th>
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Batch</th>
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Qty</th>
-                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Weight</th>
+                                            <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Free</th>
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">MRP</th>
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Rate</th>
                                             <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Amount</th>
@@ -739,7 +766,7 @@ export default function PurchaseEntry() {
                                                     <div className="min-w-[40px]">{item.quantity}</div>
                                                 </td>
                                                 <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
-                                                    <div className="min-w-[50px]">{item.weight || '-'}</div>
+                                                    <div className="min-w-[50px]">{item.Free || '-'}</div>
                                                 </td>
                                                 <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200">
                                                     <div className="min-w-[60px] whitespace-nowrap">₹{item.mrp?.toFixed(2) || '0.00'}</div>

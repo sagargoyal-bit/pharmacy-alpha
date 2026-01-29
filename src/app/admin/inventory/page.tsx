@@ -154,7 +154,7 @@ export default function InventoryManagement() {
             [item.id]: {
                 medicine_name: item.medicine_name,
                 quantity: item.quantity,
-                weight: item.weight,
+                Free: item.Free,
                 purchase_rate: item.purchase_rate,
                 mrp: item.mrp,
                 batch_number: item.batch_number,
@@ -646,7 +646,7 @@ export default function InventoryManagement() {
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Supplier</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Batch Number</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Quantity</th>
-                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Weight</th>
+                                <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Free</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Rate</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">MRP</th>
                                 <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Expiry Date</th>
@@ -747,19 +747,19 @@ export default function InventoryManagement() {
                                                 )}
                                             </td>
 
-                                            {/* Weight - Editable */}
+                                            {/* Free - Editable */}
                                             <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">
                                                 {isEditing ? (
                                                     <input
                                                         type="number"
                                                         step="0.01"
-                                                        value={editData.weight || ''}
-                                                        onChange={(e) => handleFieldChange(item.id, 'weight', e.target.value)}
+                                                        value={editData.Free || ''}
+                                                        onChange={(e) => handleFieldChange(item.id, 'Free', e.target.value)}
                                                         className="w-full min-w-[60px] px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                         placeholder="0.00"
                                                     />
                                                 ) : (
-                                                    <div className="min-w-[60px]">{item.weight ? `${item.weight}` : '-'}</div>
+                                                    <div className="min-w-[60px]">{item.Free ? `${item.Free}` : '-'}</div>
                                                 )}
                                             </td>
 

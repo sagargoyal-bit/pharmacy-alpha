@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         suppliers(name),
         purchase_items(
           quantity,
-          weight,
+          free_quantity,
           mrp,
           purchase_rate,
           medicines(name, generic_name)
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
                     medicine_name: (firstItem?.medicines as any)?.name || 'Multiple Items',
                     supplier: (purchase.suppliers as any)?.name || 'Unknown',
                     quantity: totalQuantity,
-                    weight: firstItem?.weight || null,
+                    Free: firstItem?.free_quantity || 0,
                     rate: firstItem?.purchase_rate || 0,
                     mrp: firstItem?.mrp || 0,
                     expiry_date: '2025-12-31', // We'll need to get this from purchase_items if needed
