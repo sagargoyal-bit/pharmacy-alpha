@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
+// Helper function to convert Free field text to integer
+function convertFreeToInteger(freeValue: any): number {
+    if (!freeValue) return 0
+    
+    // If it's already a number, return it
+    if (typeof freeValue === 'number') return Math.floor(freeValue)
+    
+    // If it's a string, try to extract numeric value
+    if (typeof freeValue === 'string') {
+        // Remove common units and extract numbers
+        const numericValue = freeValue.replace(/[^\d.]/g, '')
+        const parsed = parseFloat(numericValue)
+        return isNaN(parsed) ? 0 : Math.floor(parsed)
+    }
+    
+    return 0
+}
+
 // Helper function to check if a medicine is still referenced in any table
 async function checkMedicineReferences(supabaseClient: any, medicine_id: string): Promise<boolean> {
     try {
@@ -287,7 +305,6 @@ export async function GET(request: NextRequest) {
           batch_number,
           expiry_date,
           quantity,
-          weight,
           free_quantity,
           total_quantity,
           mrp,
@@ -368,7 +385,7 @@ export async function GET(request: NextRequest) {
                 supplier_name: purchase.suppliers?.name || 'Unknown',
                 batch_number: item.batch_number || '',
                 quantity: item.quantity || 0,
-                weight: item.weight || null,
+                Free: item.free_quantity || 0,
                 purchase_rate: item.purchase_rate || 0,
                 mrp: item.mrp || 0,
                 expiry_date: item.expiry_date,
@@ -601,8 +618,7 @@ export async function POST(request: NextRequest) {
                 batch_number: item.batch_number || 'AUTO-' + Date.now(),
                 expiry_date: formattedExpiryDate,
                 quantity: parseInt(item.quantity) || 0,
-                weight: item.weight || null,
-                free_quantity: 0,
+                free_quantity: convertFreeToInteger(item.Free),
                 mrp: parseFloat(item.mrp) || 0,
                 purchase_rate: parseFloat(item.rate) || 0,
                 discount_percentage: 0,
@@ -714,7 +730,7 @@ export async function PUT(request: NextRequest) {
         // STEP 2: Prepare purchase_items update fields with financial calculations
         const updateFields: any = {}
         if (updateData.quantity) updateFields.quantity = parseInt(updateData.quantity)
-        if (updateData.weight !== undefined) updateFields.weight = updateData.weight || null
+        if (updateData.Free !== undefined) updateFields.free_quantity = convertFreeToInteger(updateData.Free)
         if (updateData.purchase_rate) updateFields.purchase_rate = parseFloat(updateData.purchase_rate)
         if (updateData.mrp) updateFields.mrp = parseFloat(updateData.mrp)
         if (updateData.batch_number !== undefined) updateFields.batch_number = updateData.batch_number
