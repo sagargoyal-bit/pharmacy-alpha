@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
         let query = supabase
             .from('medicines')
-            .select('*')
+            .select('id, name, generic_name, manufacturer, strength, dosage_form, pack_size, unit_type')
             .eq('is_active', true)
 
         // Add search filter (case insensitive)

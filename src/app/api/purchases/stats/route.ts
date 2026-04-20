@@ -3,10 +3,8 @@ import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
-        // Get authenticated user and supabase client
         const { user, supabase } = await getAuthenticatedUser(request)
         
-        // Get user's pharmacy ID
         const { data: userPharmacy } = await supabase
             .from('user_pharmacies')
             .select('pharmacy_id')
@@ -25,142 +23,104 @@ export async function GET(request: NextRequest) {
         }
 
         const pharmacyId = userPharmacy.pharmacy_id
-
-        // Get the pharmacy data
-        const { data: pharmacy } = await supabase
-            .from('pharmacies')
-            .select('id')
-            .eq('id', pharmacyId)
-            .single()
-
-        if (!pharmacy) {
-            return NextResponse.json({
-                todaysPurchases: 0,
-                thisMonth: 0,
-                totalEntries: 0,
-                differentSuppliers: 0,
-                recentPurchases: []
-            })
-        }
-
-        // Get today's purchases total - only include purchases with items
         const today = new Date().toISOString().split('T')[0]
-        const { data: todaysPurchases } = await supabase
-            .from('purchases')
-            .select(`
-                total_amount,
-                purchase_items(id)
-            `)
-            .eq('pharmacy_id', pharmacyId)
-            .eq('purchase_date', today)
-
-        // Only count purchases that have items
-        const todaysPurchasesTotal = todaysPurchases
-            ?.filter(p => p.purchase_items && p.purchase_items.length > 0)
-            ?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0
-
-        // Get this month's purchases total - only include purchases with items
         const startOfMonth = new Date()
         startOfMonth.setDate(1)
         const startOfMonthString = startOfMonth.toISOString().split('T')[0]
 
-        const { data: thisMonthPurchases } = await supabase
-            .from('purchases')
-            .select(`
-                total_amount,
-                purchase_items(id)
-            `)
-            .eq('pharmacy_id', pharmacyId)
-            .gte('purchase_date', startOfMonthString)
+        // Run all queries in parallel
+        const [
+            todaysPurchasesResult,
+            thisMonthPurchasesResult,
+            allPurchasesResult,
+            recentPurchasesResult,
+        ] = await Promise.all([
+            // Today's purchases
+            supabase
+                .from('purchases')
+                .select('total_amount, purchase_items(id)')
+                .eq('pharmacy_id', pharmacyId)
+                .eq('purchase_date', today),
 
-        // Only count purchases that have items
-        const thisMonthTotal = thisMonthPurchases
-            ?.filter(p => p.purchase_items && p.purchase_items.length > 0)
-            ?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0
+            // This month's purchases
+            supabase
+                .from('purchases')
+                .select('total_amount, purchase_items(id)')
+                .eq('pharmacy_id', pharmacyId)
+                .gte('purchase_date', startOfMonthString),
 
-        // Get total purchase entries count - only count purchases with items
-        const { data: allPurchases } = await supabase
-            .from('purchases')
-            .select(`
-                id,
-                purchase_items(id)
-            `)
-            .eq('pharmacy_id', pharmacyId)
+            // All purchases (for total entries + unique suppliers count - combined into one query)
+            supabase
+                .from('purchases')
+                .select('id, supplier_id, purchase_items(id)')
+                .eq('pharmacy_id', pharmacyId),
 
-        const totalEntries = allPurchases
-            ?.filter(p => p.purchase_items && p.purchase_items.length > 0)
-            ?.length || 0
+            // Recent purchases with details
+            supabase
+                .from('purchases')
+                .select(`
+                    id,
+                    purchase_date,
+                    total_amount,
+                    suppliers(name),
+                    purchase_items(
+                        quantity,
+                        free_quantity,
+                        mrp,
+                        purchase_rate,
+                        medicines(name)
+                    )
+                `)
+                .eq('pharmacy_id', pharmacyId)
+                .order('created_at', { ascending: false })
+                .limit(10),
+        ])
 
-        // Get unique suppliers count - only count suppliers from purchases with items
-        const { data: suppliersData } = await supabase
-            .from('purchases')
-            .select(`
-                supplier_id,
-                purchase_items(id)
-            `)
-            .eq('pharmacy_id', pharmacyId)
+        // Process today's purchases
+        const todaysPurchasesTotal = todaysPurchasesResult.data
+            ?.filter((p: any) => p.purchase_items && p.purchase_items.length > 0)
+            ?.reduce((sum: number, p: any) => sum + (p.total_amount || 0), 0) || 0
+
+        // Process this month's purchases
+        const thisMonthTotal = thisMonthPurchasesResult.data
+            ?.filter((p: any) => p.purchase_items && p.purchase_items.length > 0)
+            ?.reduce((sum: number, p: any) => sum + (p.total_amount || 0), 0) || 0
+
+        // Process total entries + unique suppliers from the single combined query
+        const purchasesWithItems = allPurchasesResult.data
+            ?.filter((p: any) => p.purchase_items && p.purchase_items.length > 0) || []
+
+        const totalEntries = purchasesWithItems.length
 
         const uniqueSuppliers = new Set(
-            suppliersData
-                ?.filter(p => p.purchase_items && p.purchase_items.length > 0)
-                ?.map(p => p.supplier_id) || []
+            purchasesWithItems.map((p: any) => p.supplier_id)
         ).size
 
-        // Get recent purchases with details
-        const { data: recentPurchases } = await supabase
-            .from('purchases')
-            .select(`
-        id,
-        invoice_number,
-        purchase_date,
-        total_amount,
-        suppliers(name),
-        purchase_items(
-          quantity,
-          free_quantity,
-          mrp,
-          purchase_rate,
-          medicines(name, generic_name)
-        )
-      `)
-            .eq('pharmacy_id', pharmacyId)
-            .order('created_at', { ascending: false })
-            .limit(10)
-
-        // Format recent purchases for display
-        const formattedRecentPurchases = recentPurchases
-            ?.filter(purchase => purchase.purchase_items && purchase.purchase_items.length > 0) // Filter out purchases with no items
-            ?.map(purchase => {
+        // Process recent purchases
+        const formattedRecentPurchases = recentPurchasesResult.data
+            ?.filter((purchase: any) => purchase.purchase_items && purchase.purchase_items.length > 0)
+            ?.map((purchase: any) => {
                 const firstItem = purchase.purchase_items?.[0]
-                const totalQuantity = purchase.purchase_items?.reduce((sum, item) => sum + item.quantity, 0) || 0
+                const totalQuantity = purchase.purchase_items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0
 
                 return {
                     id: purchase.id,
-                    medicine_name: (firstItem?.medicines as any)?.name || 'Multiple Items',
-                    supplier: (purchase.suppliers as any)?.name || 'Unknown',
+                    medicine_name: firstItem?.medicines?.name || 'Multiple Items',
+                    supplier: purchase.suppliers?.name || 'Unknown',
                     quantity: totalQuantity,
                     Free: firstItem?.free_quantity || 0,
                     rate: firstItem?.purchase_rate || 0,
                     mrp: firstItem?.mrp || 0,
-                    expiry_date: '2025-12-31', // We'll need to get this from purchase_items if needed
                     total: purchase.total_amount || 0,
                     purchase_date: purchase.purchase_date,
                     items_count: purchase.purchase_items?.length || 0
                 }
             }) || []
 
-        console.log('📊 Purchases stats:', {
-            todaysPurchases: todaysPurchasesTotal,
-            thisMonth: thisMonthTotal,
-            totalEntries: totalEntries || 0,
-            differentSuppliers: uniqueSuppliers,
-            recentPurchasesCount: formattedRecentPurchases.length
-        })
-
         return NextResponse.json({
             todaysPurchases: todaysPurchasesTotal,
             thisMonth: thisMonthTotal,
-            totalEntries: totalEntries || 0,
+            totalEntries: totalEntries,
             differentSuppliers: uniqueSuppliers,
             recentPurchases: formattedRecentPurchases
         })
@@ -168,7 +128,6 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Purchases stats error:', error)
         
-        // Handle authentication errors
         if (error instanceof Error && error.message.includes('Authentication')) {
             return NextResponse.json(
                 { error: 'Authentication required' },
@@ -181,4 +140,4 @@ export async function GET(request: NextRequest) {
             details: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 })
     }
-} 
+}

@@ -3,23 +3,21 @@ import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
-        // Get authenticated user and supabase client
         const { user, supabase } = await getAuthenticatedUser(request)
         
         const { searchParams } = new URL(request.url)
-        const type = searchParams.get('type') // 'stats' for statistics endpoint
+        const type = searchParams.get('type')
         const days = parseInt(searchParams.get('days') || '90')
-        const status = searchParams.get('status') // 'expired', 'critical', 'warning', 'alert'
+        const status = searchParams.get('status')
         const medicineName = searchParams.get('medicine_name')
         const batchNumber = searchParams.get('batch_number')
         const supplierName = searchParams.get('supplier_name')
-        const startDate = searchParams.get('start_date') // Date range start
-        const endDate = searchParams.get('end_date') // Date range end
+        const startDate = searchParams.get('start_date')
+        const endDate = searchParams.get('end_date')
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // Get user's pharmacy ID
         const { data: userPharmacy } = await supabase
             .from('user_pharmacies')
             .select('pharmacy_id')
@@ -37,115 +35,106 @@ export async function GET(request: NextRequest) {
             } : [])
         }
 
-        // If requesting stats, calculate expiry statistics
+        const pharmacyId = userPharmacy.pharmacy_id
+
         if (type === 'stats') {
             const today = new Date()
+            const todayStr = today.toISOString().split('T')[0]
             const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
             const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
             const in90Days = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000)
 
-            // Get expired items in the last week
-            const { data: expiredThisWeek } = await supabase
-                .from('current_inventory')
-                .select('*')
-                .eq('pharmacy_id', userPharmacy.pharmacy_id)
-                .eq('is_active', true)
-                .gt('current_stock', 0)
-                .gte('expiry_date', oneWeekAgo.toISOString().split('T')[0])
-                .lt('expiry_date', today.toISOString().split('T')[0])
+            // Run all stats queries in parallel
+            // Fetch 90-day range and derive 30-day count from it (superset optimization)
+            const [expiredThisWeekResult, expiringIn90Result, recentExpiriesResult] = await Promise.all([
+                // Expired items in last week (count only)
+                supabase
+                    .from('current_inventory')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('pharmacy_id', pharmacyId)
+                    .eq('is_active', true)
+                    .gt('current_stock', 0)
+                    .gte('expiry_date', oneWeekAgo.toISOString().split('T')[0])
+                    .lt('expiry_date', todayStr),
 
-            // Get items expiring in next 30 days
-            const { data: expiringIn30 } = await supabase
-                .from('current_inventory')
-                .select('*')
-                .eq('pharmacy_id', userPharmacy.pharmacy_id)
-                .eq('is_active', true)
-                .gt('current_stock', 0)
-                .gte('expiry_date', today.toISOString().split('T')[0])
-                .lte('expiry_date', in30Days.toISOString().split('T')[0])
+                // Items expiring in next 90 days (need stock + rate for value calculation, and expiry_date for 30-day filter)
+                supabase
+                    .from('current_inventory')
+                    .select('expiry_date, current_stock, last_purchase_rate')
+                    .eq('pharmacy_id', pharmacyId)
+                    .eq('is_active', true)
+                    .gt('current_stock', 0)
+                    .gte('expiry_date', todayStr)
+                    .lte('expiry_date', in90Days.toISOString().split('T')[0]),
 
-            // Get items expiring in next 90 days
-            const { data: expiringIn90 } = await supabase
-                .from('current_inventory')
-                .select('*')
-                .eq('pharmacy_id', userPharmacy.pharmacy_id)
-                .eq('is_active', true)
-                .gt('current_stock', 0)
-                .gte('expiry_date', today.toISOString().split('T')[0])
-                .lte('expiry_date', in90Days.toISOString().split('T')[0])
+                // Recent expiring items for display
+                supabase
+                    .from('current_inventory')
+                    .select(`
+                        id, expiry_date, batch_number, current_stock, current_mrp,
+                        medicines!inner(name)
+                    `)
+                    .eq('pharmacy_id', pharmacyId)
+                    .eq('is_active', true)
+                    .gt('current_stock', 0)
+                    .gte('expiry_date', todayStr)
+                    .order('expiry_date', { ascending: true })
+                    .limit(10),
+            ])
 
-            // Calculate value at risk (total value of items expiring in next 90 days)
-            const valueAtRisk = expiringIn90?.reduce((total, item) => {
-                const itemValue = (item.current_stock || 0) * (item.last_purchase_rate || 0)
-                return total + itemValue
-            }, 0) || 0
+            const expiringIn90Data = expiringIn90Result.data || []
+            const in30DaysStr = in30Days.toISOString().split('T')[0]
 
-            // Get recent expiring items for the "Expiring Soon" section
-            const { data: recentExpiriesData } = await supabase
-                .from('current_inventory')
-                .select(`
-                    *,
-                    medicines!inner(name)
-                `)
-                .eq('pharmacy_id', userPharmacy.pharmacy_id)
-                .eq('is_active', true)
-                .gt('current_stock', 0)
-                .gte('expiry_date', today.toISOString().split('T')[0])
-                .order('expiry_date', { ascending: true })
-                .limit(10)
+            // Derive 30-day count from the 90-day superset
+            const expiringIn30Count = expiringIn90Data.filter(
+                item => item.expiry_date <= in30DaysStr
+            ).length
 
-            // Transform recent expiries data (without supplier info for stats)
-            const recentExpiries = recentExpiriesData?.map(item => {
-                const today = new Date()
-                const expiryDate = new Date(item.expiry_date)
-                const timeDiff = expiryDate.getTime() - today.getTime()
-                const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24))
+            const valueAtRisk = expiringIn90Data.reduce((total, item) => {
+                return total + ((item.current_stock || 0) * (item.last_purchase_rate || 0))
+            }, 0)
+
+            const recentExpiries = recentExpiriesResult.data?.map(item => {
+                const nowMs = Date.now()
+                const expiryMs = new Date(item.expiry_date).getTime()
+                const daysToExpiry = Math.ceil((expiryMs - nowMs) / (1000 * 3600 * 24))
 
                 return {
                     id: item.id,
-                    medicine_name: item.medicines?.name || 'Unknown',
+                    medicine_name: (item.medicines as any)?.name || 'Unknown',
                     batch_number: item.batch_number,
                     expiry_date: item.expiry_date,
                     current_stock: item.current_stock || 0,
                     days_to_expiry: daysToExpiry,
-                    supplier_name: 'Unknown', // Simplified for stats
+                    supplier_name: 'Unknown',
                     mrp: item.current_mrp || 0
                 }
             }) || []
 
-            console.log('📊 Expiry stats:', {
-                expiredThisWeek: expiredThisWeek?.length || 0,
-                expiringIn30Days: expiringIn30?.length || 0,
-                expiringIn90Days: expiringIn90?.length || 0,
-                valueAtRisk: valueAtRisk,
-                recentExpiriesCount: recentExpiries?.length || 0
-            })
-
             return NextResponse.json({
-                expiredThisWeek: expiredThisWeek?.length || 0,
-                expiringIn30Days: expiringIn30?.length || 0,
-                expiringIn90Days: expiringIn90?.length || 0,
+                expiredThisWeek: expiredThisWeekResult.count || 0,
+                expiringIn30Days: expiringIn30Count,
+                expiringIn90Days: expiringIn90Data.length,
                 valueAtRisk: valueAtRisk,
-                recentExpiries: recentExpiries || []
+                recentExpiries: recentExpiries
             })
         }
 
-        // Original functionality for getting expiry alerts
-        // Default to next 90 days if no date filters are provided
-        const defaultLimit = 10
-        const actualLimit = Math.min(limit, 50) // Cap at 50 for performance
+        // --- List path (non-stats) ---
+
+        const finalLimit = Math.min(limit, 50)
+        const finalOffset = offset
 
         let query = supabase
             .from('current_inventory')
             .select(`
-                *,
+                id, medicine_id, batch_number, expiry_date, current_stock, last_purchase_rate, current_mrp,
                 medicines!inner(name)
             `)
-            .eq('pharmacy_id', userPharmacy.pharmacy_id)
+            .eq('pharmacy_id', pharmacyId)
             .eq('is_active', true)
             .gt('current_stock', 0)
 
-        // Add status filter based on expiry dates
         if (status) {
             const today = new Date()
             const todayStr = today.toISOString().split('T')[0]
@@ -154,200 +143,189 @@ export async function GET(request: NextRequest) {
                 case 'EXPIRED':
                     query = query.lte('expiry_date', todayStr)
                     break
-                case 'CRITICAL':
+                case 'CRITICAL': {
                     const critical = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
                     query = query.gt('expiry_date', todayStr).lte('expiry_date', critical.toISOString().split('T')[0])
                     break
-                case 'WARNING':
+                }
+                case 'WARNING': {
                     const warning30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
                     const warning60 = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000)
                     query = query.gt('expiry_date', warning30.toISOString().split('T')[0]).lte('expiry_date', warning60.toISOString().split('T')[0])
                     break
-                case 'ALERT':
+                }
+                case 'ALERT': {
                     const alert60 = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000)
                     const alert90 = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000)
                     query = query.gt('expiry_date', alert60.toISOString().split('T')[0]).lte('expiry_date', alert90.toISOString().split('T')[0])
                     break
+                }
             }
         }
 
-        // Add medicine name filter (partial match)
         if (medicineName) {
             query = query.ilike('medicines.name', `%${medicineName}%`)
         }
 
-        // Add batch number filter (partial match)
         if (batchNumber) {
             query = query.ilike('batch_number', `%${batchNumber}%`)
         }
 
-        // Add specific expiry date filter (overrides default 90 days)
         if (startDate && endDate) {
-            query = query.gte('expiry_date', startDate)
-            query = query.lte('expiry_date', endDate)
+            query = query.gte('expiry_date', startDate).lte('expiry_date', endDate)
         } else if (startDate) {
             query = query.gte('expiry_date', startDate)
         } else if (endDate) {
             query = query.lte('expiry_date', endDate)
         }
 
-        // Add days filter - only if no specific filters are provided and days param is explicitly sent
         const hasSpecificFilters = !!(medicineName || batchNumber || supplierName || startDate || endDate || status)
-        const daysParam = searchParams.get('days') // Check if days was explicitly provided
+        const daysParam = searchParams.get('days')
 
         if (!hasSpecificFilters && daysParam) {
             const today = new Date()
             const futureDate = new Date()
             futureDate.setDate(futureDate.getDate() + days)
-
-            // Apply date range based on days parameter (only for initial load)
             query = query.gte('expiry_date', today.toISOString().split('T')[0])
             query = query.lte('expiry_date', futureDate.toISOString().split('T')[0])
         }
 
-        // Always use provided pagination parameters
-        const finalLimit = Math.min(limit, 50) // Cap at 50 for performance
-        const finalOffset = offset
+        // When supplierName filter is absent, paginate at DB level for efficiency.
+        // When present, we must fetch all rows to do post-query supplier filtering.
+        const needsPostQueryFilter = !!supplierName
 
-        // Get all data without pagination first
-        const { data: inventoryData, error } = await query
-            .order('expiry_date', { ascending: true })
+        let inventoryData: any[] | null = null
+        let totalCountFromDB = 0
 
-        if (error) {
-            console.error('Expiry alerts fetch error:', error)
-            return NextResponse.json(
-                { error: 'Failed to fetch expiry alerts' },
-                { status: 500 }
-            )
+        if (needsPostQueryFilter) {
+            const { data, error } = await query
+                .order('expiry_date', { ascending: true })
+
+            if (error) {
+                return NextResponse.json(
+                    { error: 'Failed to fetch expiry alerts' },
+                    { status: 500 }
+                )
+            }
+            inventoryData = data
+        } else {
+            const { data, error } = await query
+                .order('expiry_date', { ascending: true })
+                .range(finalOffset, finalOffset + finalLimit - 1)
+            
+            if (error) {
+                return NextResponse.json(
+                    { error: 'Failed to fetch expiry alerts' },
+                    { status: 500 }
+                )
+            }
+            inventoryData = data
+
+            // Get total count separately for pagination metadata
+            const countQuery = supabase
+                .from('current_inventory')
+                .select('id', { count: 'exact', head: true })
+                .eq('pharmacy_id', pharmacyId)
+                .eq('is_active', true)
+                .gt('current_stock', 0)
+            
+            const { count } = await countQuery
+            totalCountFromDB = count || data?.length || 0
         }
 
-        // Get supplier information for all inventory items
-        const supplierMap = new Map()
+        // Batch supplier lookup
+        const supplierMap = new Map<string, string>()
 
         if (inventoryData && inventoryData.length > 0) {
-            // Create exact matching conditions for each inventory item
-            const conditions = inventoryData.map(item => ({
-                medicine_id: item.medicine_id,
-                batch_number: item.batch_number,
-                expiry_date: item.expiry_date
-            }))
+            const medicineIds = [...new Set(inventoryData.map(item => item.medicine_id))]
 
-            // Fetch purchase items that exactly match our inventory conditions
-            for (const condition of conditions) {
-                const { data: matchingPurchaseItems, error: purchaseError } = await supabase
-                    .from('purchase_items')
-                    .select(`
-                        medicine_id,
-                        batch_number,
-                        expiry_date,
-                        purchases!inner(
-                            supplier_id,
-                            suppliers!inner(name)
-                        )
-                    `)
-                    .eq('medicine_id', condition.medicine_id)
-                    .eq('batch_number', condition.batch_number)
-                    .eq('expiry_date', condition.expiry_date)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
+            const { data: purchaseItemsData } = await supabase
+                .from('purchase_items')
+                .select(`
+                    medicine_id,
+                    batch_number,
+                    expiry_date,
+                    purchases!inner(
+                        suppliers!inner(name)
+                    )
+                `)
+                .in('medicine_id', medicineIds)
 
-                if (purchaseError) {
-                    continue
-                }
-
-                const key = `${condition.medicine_id}-${condition.batch_number}-${condition.expiry_date}`
-
-                if (matchingPurchaseItems && matchingPurchaseItems.length > 0) {
-                    const purchaseItem = matchingPurchaseItems[0]
-                    // Handle array structure correctly
-                    const purchase = Array.isArray(purchaseItem.purchases) ? purchaseItem.purchases[0] : purchaseItem.purchases
-                    const supplier = Array.isArray(purchase?.suppliers) ? purchase.suppliers[0] : purchase?.suppliers
-
-                    if (supplier?.name) {
-                        supplierMap.set(key, supplier.name)
+            if (purchaseItemsData) {
+                for (const purchaseItem of purchaseItemsData) {
+                    const key = `${purchaseItem.medicine_id}-${purchaseItem.batch_number}-${purchaseItem.expiry_date}`
+                    if (!supplierMap.has(key)) {
+                        const purchase = Array.isArray(purchaseItem.purchases) ? purchaseItem.purchases[0] : purchaseItem.purchases
+                        const supplier = Array.isArray((purchase as any)?.suppliers) ? (purchase as any).suppliers[0] : (purchase as any)?.suppliers
+                        if (supplier?.name) {
+                            supplierMap.set(key, supplier.name)
+                        }
                     }
                 }
             }
-
-
         }
 
-        // Transform the data to match the expected format and apply supplier filter
+        const nowMs = Date.now()
         const transformedData = inventoryData
             ?.map(item => {
-                // Calculate days to expiry
-                const today = new Date()
-                const expiryDate = new Date(item.expiry_date)
-                const timeDiff = expiryDate.getTime() - today.getTime()
-                const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24))
+                const expiryMs = new Date(item.expiry_date).getTime()
+                const daysToExpiry = Math.ceil((expiryMs - nowMs) / (1000 * 3600 * 24))
 
-                // Calculate status
-                let status = 'NORMAL'
-                if (daysToExpiry <= 0) status = 'EXPIRED'
-                else if (daysToExpiry <= 30) status = 'CRITICAL'
-                else if (daysToExpiry <= 60) status = 'WARNING'
-                else if (daysToExpiry <= 90) status = 'ALERT'
+                let itemStatus = 'NORMAL'
+                if (daysToExpiry <= 0) itemStatus = 'EXPIRED'
+                else if (daysToExpiry <= 30) itemStatus = 'CRITICAL'
+                else if (daysToExpiry <= 60) itemStatus = 'WARNING'
+                else if (daysToExpiry <= 90) itemStatus = 'ALERT'
 
-                // Get supplier name from our supplier map
                 const key = `${item.medicine_id}-${item.batch_number}-${item.expiry_date}`
-                const supplierName = supplierMap.get(key) || 'Unknown'
+                const itemSupplierName = supplierMap.get(key) || 'Unknown'
 
                 return {
                     id: item.id,
-                    medicine_name: item.medicines?.name || 'Unknown',
+                    medicine_name: (item.medicines as any)?.name || 'Unknown',
                     batch_number: item.batch_number,
                     expiry_date: item.expiry_date,
                     current_stock: item.current_stock || 0,
                     days_to_expiry: daysToExpiry,
                     estimated_loss: (item.current_stock || 0) * (item.last_purchase_rate || 0),
-                    expiry_status: status,
-                    supplier_name: supplierName,
+                    expiry_status: itemStatus,
+                    supplier_name: itemSupplierName,
                     mrp: item.current_mrp || 0,
                     quantity: item.current_stock || 0
                 }
             }) || []
 
-        // Get total count before applying supplier filter
-        const totalBeforeSupplierFilter = transformedData.length
+        if (needsPostQueryFilter) {
+            const filteredData = transformedData.filter(item =>
+                item.supplier_name.toLowerCase().includes(supplierName!.toLowerCase())
+            )
 
-        // Apply supplier name filter (if any)
-        const finalData = transformedData?.filter(item => {
-            if (supplierName) {
-                return item.supplier_name.toLowerCase().includes(supplierName.toLowerCase())
-            }
-            return true
-        }) || []
+            const paginatedData = filteredData.slice(finalOffset, finalOffset + finalLimit)
+            const totalCount = filteredData.length
+            const totalValueAtRisk = filteredData.reduce((total, item) => total + (item.estimated_loss || 0), 0)
 
-        // Since supplier filter is applied after database query, we need to recalculate pagination
-        const paginatedData = finalData.slice(finalOffset, finalOffset + finalLimit)
-        const totalCount = finalData.length
+            return NextResponse.json({
+                data: paginatedData,
+                total: totalCount,
+                page: page,
+                limit: finalLimit,
+                totalPages: Math.ceil(totalCount / finalLimit),
+                totalValueAtRisk: totalValueAtRisk
+            })
+        }
 
-        // Calculate Value at Risk for ALL filtered results (not just current page)
-        const totalValueAtRisk = finalData.reduce((total, item) => {
-            return total + (item.estimated_loss || 0)
-        }, 0)
-
-        console.log('📋 Expiry alerts:', {
-            totalFound: totalCount,
-            currentPage: page,
-            itemsPerPage: finalLimit,
-            totalValueAtRisk: totalValueAtRisk,
-            filters: { medicineName, batchNumber, supplierName, startDate, endDate, days },
-            sampleSuppliers: paginatedData.slice(0, 3).map(item => item.supplier_name)
-        })
+        // DB-paginated path: data is already the correct page
+        const totalValueAtRisk = transformedData.reduce((total, item) => total + (item.estimated_loss || 0), 0)
 
         return NextResponse.json({
-            data: paginatedData,
-            total: totalCount,
+            data: transformedData,
+            total: totalCountFromDB || transformedData.length,
             page: page,
             limit: finalLimit,
-            totalPages: Math.ceil(totalCount / finalLimit),
+            totalPages: Math.ceil((totalCountFromDB || transformedData.length) / finalLimit),
             totalValueAtRisk: totalValueAtRisk
         })
     } catch (error) {
-        console.error('API error:', error)
-        
-        // Handle authentication errors
         if (error instanceof Error && error.message.includes('Authentication')) {
             return NextResponse.json(
                 { error: 'Authentication required' },
@@ -360,4 +338,4 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         )
     }
-} 
+}

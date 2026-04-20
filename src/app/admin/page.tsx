@@ -1,7 +1,6 @@
 'use client'
 
 import { useGetDashboardStatsQuery } from '@/lib/store/api/pharmacyApi'
-import { useEffect } from 'react'
 
 export default function AdminDashboard() {
     // Fetch dashboard data using RTK Query with auto-refresh
@@ -12,21 +11,15 @@ export default function AdminDashboard() {
         refetch,
         isError
     } = useGetDashboardStatsQuery(undefined, {
-        pollingInterval: 30000, // Refresh every 30 seconds
+        pollingInterval: 120000,
         refetchOnMountOrArgChange: true,
         refetchOnFocus: true,
         refetchOnReconnect: true
     })
 
-    // Manual refresh function
     const handleRefresh = () => {
         refetch()
     }
-
-    // Auto-refresh when component mounts
-    useEffect(() => {
-        refetch()
-    }, [refetch])
 
     // Fallback stats for when API is not connected (no static changes)
     const fallbackStats = [

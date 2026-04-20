@@ -13,10 +13,9 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // Use the view for current stock summary - RLS will filter to user's pharmacy
         let query = supabase
             .from('view_current_stock_summary')
-            .select('*')
+            .select('medicine_name, generic_name, manufacturer, total_stock, total_quantity, current_stock, expiring_soon, total_value, last_purchase_date')
 
         // Add search filter
         if (search) {
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
             .range(offset, offset + limit - 1)
 
         if (error) {
-            console.error('Inventory fetch error:', error)
             return NextResponse.json(
                 { error: 'Failed to fetch inventory' },
                 { status: 500 }
@@ -42,9 +40,6 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(inventory || [])
     } catch (error) {
-        console.error('API error:', error)
-        
-        // Handle authentication errors
         if (error instanceof Error && error.message.includes('Authentication')) {
             return NextResponse.json(
                 { error: 'Authentication required' },
