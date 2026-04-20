@@ -3,106 +3,68 @@ import { getAuthenticatedUser } from '@/lib/auth/supabase-server'
 
 export async function GET(request: NextRequest) {
     try {
-        // Get authenticated user and supabase client
         const { user: authUser, supabase } = await getAuthenticatedUser(request)
 
-        // Get the user details from the users table
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select(`
-                id,
-                email,
-                full_name,
-                phone,
-                role,
-                is_active,
-                created_at,
-                updated_at
-            `)
-            .eq('id', authUser.id)
-            .single()
+        // Run user and user_pharmacies queries in parallel (both use authUser.id)
+        const [userResult, userPharmacyResult] = await Promise.all([
+            supabase
+                .from('users')
+                .select('id, email, full_name, phone, role, is_active, created_at, updated_at')
+                .eq('id', authUser.id)
+                .single(),
+            supabase
+                .from('user_pharmacies')
+                .select('role, is_active, pharmacy_id, created_at')
+                .eq('user_id', authUser.id)
+                .eq('is_active', true)
+                .limit(1)
+                .single(),
+        ])
 
-        if (userError || !user) {
-            console.error('User fetch error:', userError)
+        if (userResult.error || !userResult.data) {
             return NextResponse.json(
                 { error: 'User not found' },
                 { status: 404 }
             )
         }
 
-        // Get the pharmacy associated with this user
-        const { data: userPharmacy, error: userPharmacyError } = await supabase
-            .from('user_pharmacies')
-            .select(`
-                role,
-                is_active,
-                pharmacy_id,
-                created_at
-            `)
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .limit(1)
-            .single()
-
-        if (userPharmacyError || !userPharmacy) {
-            console.error('User-pharmacy relationship error:', userPharmacyError)
+        if (userPharmacyResult.error || !userPharmacyResult.data) {
             return NextResponse.json(
                 { error: 'Pharmacy association not found' },
                 { status: 404 }
             )
         }
 
-        // Get the pharmacy details
-        const { data: pharmacy, error: pharmacyError } = await supabase
-            .from('pharmacies')
-            .select(`
-                id,
-                name,
-                license_number,
-                gst_number,
-                address,
-                city,
-                state,
-                pincode,
-                phone,
-                email,
-                owner_id,
-                is_active,
-                created_at,
-                updated_at,
-                last_cleanup_date
-            `)
-            .eq('id', userPharmacy.pharmacy_id)
-            .single()
+        const user = userResult.data
+        const userPharmacy = userPharmacyResult.data
 
-        if (pharmacyError || !pharmacy) {
-            console.error('Pharmacy fetch error:', pharmacyError)
+        // Run pharmacy details + all 3 count queries in parallel
+        const [pharmacyResult, medicinesCount, suppliersCount, purchasesCount] = await Promise.all([
+            supabase
+                .from('pharmacies')
+                .select('id, name, license_number, gst_number, address, city, state, pincode, phone, email, owner_id, is_active, created_at, updated_at, last_cleanup_date')
+                .eq('id', userPharmacy.pharmacy_id)
+                .single(),
+            supabase
+                .from('medicines')
+                .select('id', { count: 'exact', head: true }),
+            supabase
+                .from('suppliers')
+                .select('id', { count: 'exact', head: true })
+                .eq('pharmacy_id', userPharmacy.pharmacy_id),
+            supabase
+                .from('purchases')
+                .select('id', { count: 'exact', head: true })
+                .eq('pharmacy_id', userPharmacy.pharmacy_id),
+        ])
+
+        if (pharmacyResult.error || !pharmacyResult.data) {
             return NextResponse.json(
                 { error: 'Pharmacy not found' },
                 { status: 404 }
             )
         }
 
-        // Get some basic statistics
-        const [
-            { count: totalMedicines },
-            { count: totalSuppliers },
-            { count: totalPurchases }
-        ] = await Promise.all([
-            supabase
-                .from('medicines')
-                .select('*', { count: 'exact', head: true }),
-            supabase
-                .from('suppliers')
-                .select('*', { count: 'exact', head: true })
-                .eq('pharmacy_id', pharmacy.id),
-            supabase
-                .from('purchases')
-                .select('*', { count: 'exact', head: true })
-                .eq('pharmacy_id', pharmacy.id)
-        ])
-
-        // Calculate user tenure
         const userCreatedDate = new Date(user.created_at)
         const now = new Date()
         const tenureInDays = Math.floor((now.getTime() - userCreatedDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -114,19 +76,16 @@ export async function GET(request: NextRequest) {
                 pharmacy_role: userPharmacy.role
             },
             pharmacy: {
-                ...pharmacy,
+                ...pharmacyResult.data,
                 statistics: {
-                    total_medicines: totalMedicines || 0,
-                    total_suppliers: totalSuppliers || 0,
-                    total_purchases: totalPurchases || 0
+                    total_medicines: medicinesCount.count || 0,
+                    total_suppliers: suppliersCount.count || 0,
+                    total_purchases: purchasesCount.count || 0
                 }
             }
         })
 
     } catch (error) {
-        console.error('API error:', error)
-        
-        // Handle authentication errors
         if (error instanceof Error && error.message.includes('Authentication')) {
             return NextResponse.json(
                 { error: 'Authentication required' },

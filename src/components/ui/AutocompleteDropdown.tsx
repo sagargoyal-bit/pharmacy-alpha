@@ -27,6 +27,7 @@ export interface AutocompleteDropdownProps {
     inTable?: boolean
     onAfterSelect?: (inputElement: HTMLInputElement) => void
     showSearchIcon?: boolean
+    borderless?: boolean
 }
 
 // Custom hook for debounced API calls
@@ -198,7 +199,8 @@ export default function AutocompleteDropdown({
     dropdownDirection: dropdownDirectionProp = 'auto',
     inTable = false,
     onAfterSelect,
-    showSearchIcon = true
+    showSearchIcon = true,
+    borderless = false
 }: AutocompleteDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
@@ -347,7 +349,9 @@ export default function AutocompleteDropdown({
         }
     }, [highlightedIndex])
 
-    const baseInputClasses = "w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    const baseInputClasses = borderless
+        ? "w-full h-full text-sm text-gray-900 placeholder-gray-500 border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+        : "w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
     const inputClasses = `${baseInputClasses} ${className} ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer'}`
 
     return (

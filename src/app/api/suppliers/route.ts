@@ -12,13 +12,11 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
-        // With RLS enabled, the query will automatically filter to user's pharmacy
         let query = supabase
             .from('suppliers')
-            .select('*')
+            .select('id, name')
             .eq('is_active', true)
 
-        // Add search filter (case insensitive)
         if (search) {
             const searchTerm = search.trim().toLowerCase()
             query = query.or(`name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
